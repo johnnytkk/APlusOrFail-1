@@ -2,7 +2,7 @@
 
 namespace APlusOrFail.Character
 {
-    public class CharacterHealth : MonoBehaviour
+    public class CharacterHealth : PropertyFieldBehavior
     {
         [HideInInspector, SerializeField]
         private int _health;
