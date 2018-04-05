@@ -221,11 +221,6 @@ namespace APlusOrFail.Character
             return code != null && Input.GetKey(code.Value);
         }
 
-        private Vector2 CalcPreJumpingForce(ContactPoint2D floorCp)
-        {
-            return -floorCp.normal * Vector3.Cross(-floorCp.normal * rigidbody2D.mass * Physics2D.gravity.magnitude * 50, Physics2D.gravity.normalized).magnitude;
-        }
-
 
         private bool _inAir;
         private bool inAir
