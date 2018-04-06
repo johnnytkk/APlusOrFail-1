@@ -35,7 +35,7 @@ namespace APlusOrFail.Setup.MapPlatform
 
         private void OnCollisionEnter2D(Collision2D collision)
         {
-            if (collision.gameObject.tag == "Character")
+            if (collision.gameObject.layer == LayerId.Characters)
             {
                 ++characterCount;
             }
@@ -43,7 +43,7 @@ namespace APlusOrFail.Setup.MapPlatform
 
         private void OnCollisionExit2D(Collision2D collision)
         {
-            if (collision.gameObject.tag == "Character")
+            if (collision.gameObject.layer == LayerId.Characters)
             {
                 --characterCount;
             }
