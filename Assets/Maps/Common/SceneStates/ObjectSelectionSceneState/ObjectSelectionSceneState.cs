@@ -8,7 +8,7 @@ namespace APlusOrFail.Maps.SceneStates.ObjectSelectionSceneState
     using Objects;
     
     [RequireComponent(typeof(KeyCursorController))]
-    public class ObjectSelectionSceneState : SceneState
+    public class ObjectSelectionSceneState : SceneStateBehavior<object, object>
     {
         private static int objectLayerIndex = -1;
 
@@ -48,9 +48,9 @@ namespace APlusOrFail.Maps.SceneStates.ObjectSelectionSceneState
             HideUI();
         }
 
-        protected override void OnActivate()
+        protected override void OnActivate(ISceneState unloadedSceneState, object result)
         {
-            base.OnActivate();
+            base.OnActivate(unloadedSceneState, result);
             ShowUI();
         }
 
@@ -131,7 +131,7 @@ namespace APlusOrFail.Maps.SceneStates.ObjectSelectionSceneState
                 keyCursorsForUpdate = keyCursors.Count > 0 ? keyCursors.ToArray() : null;
                 keyCursorsModified = false;
             }
-            if (state.IsAtLeast(State.Activated) && keyCursorsForUpdate != null)
+            if (phase.IsAtLeast(SceneStatePhase.Activated) && keyCursorsForUpdate != null)
             {
                 foreach (KeyCursorController.KeyCursor keyCursor in keyCursorsForUpdate)
                 {

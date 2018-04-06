@@ -5,7 +5,7 @@ namespace APlusOrFail.Setup.States.CharacterSelectionState
 {
     using Character;
 
-    public class CharacterSelectionState : SceneState
+    public class CharacterSelectionState : SceneStateBehavior<object, object>
     {
         public RectTransform uiScene;
         public Text messageText;
@@ -27,13 +27,13 @@ namespace APlusOrFail.Setup.States.CharacterSelectionState
             HideUI();
         }
 
-        protected override void OnLoad()
+        protected override void OnLoad(object arg)
         {
             cancelled = false;
             selectedCharacter = null;
         }
 
-        protected override void OnActivate()
+        protected override void OnActivate(ISceneState unloadedSceneState, object result)
         {
             ShowUI();
         }
@@ -45,7 +45,7 @@ namespace APlusOrFail.Setup.States.CharacterSelectionState
 
         private void OnCancelButtonClicked()
         {
-            if (state.IsAtLeast(State.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Activated))
             {
                 cancelled = true;
                 SceneStateManager.instance.PopSceneState();
@@ -54,7 +54,7 @@ namespace APlusOrFail.Setup.States.CharacterSelectionState
 
         private void OnCharactedSelected(Selectable selectedChar)
         {
-            if (state.IsAtLeast(State.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Activated))
             {
                 CharacterPlayer selectedCharPlayer = selectedChar.GetComponent<CharacterPlayer>();
                 if (selectedChar.gameObject != originalCharacter && selectedCharPlayer.player != null)

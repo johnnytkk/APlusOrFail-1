@@ -9,7 +9,7 @@ namespace APlusOrFail.Maps.SceneStates.PlaceObjectSceneState
     using ObjectGrid;
 
     [RequireComponent(typeof(KeyCursorController))]
-    public class PlaceObjectSceneState : SceneState
+    public class PlaceObjectSceneState : SceneStateBehavior<object, object>
     {
         private class ObjectData
         {
@@ -39,15 +39,15 @@ namespace APlusOrFail.Maps.SceneStates.PlaceObjectSceneState
             HideUI();
         }
 
-        protected override void OnLoad()
+        protected override void OnLoad(object arg)
         {
-            base.OnLoad();
+            base.OnLoad(arg);
 
         }
 
-        protected override void OnActivate()
+        protected override void OnActivate(ISceneState unloadedSceneState, object result)
         {
-            base.OnActivate();
+            base.OnActivate(unloadedSceneState, result);
             ShowUI();
         }
 
@@ -107,7 +107,7 @@ namespace APlusOrFail.Maps.SceneStates.PlaceObjectSceneState
                 keyCursorObjectsForUpdate = keyCursorObjects.Count > 0 ? keyCursorObjects.ToArray() : null;
                 keyCursorObjectsModified = false;
             }
-            if (state.IsAtLeast(State.Activated) && keyCursorObjectsForUpdate != null)
+            if (phase.IsAtLeast(SceneStatePhase.Activated) && keyCursorObjectsForUpdate != null)
             {
                 foreach (KeyValuePair<KeyCursorController.KeyCursor, ObjectData> pair in keyCursorObjectsForUpdate)
                 {

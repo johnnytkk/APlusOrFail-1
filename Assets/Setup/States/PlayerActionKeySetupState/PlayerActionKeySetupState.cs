@@ -7,7 +7,7 @@ namespace APlusOrFail.Setup.States.PlayerActionKeySetupState
 {
     using Character;
 
-    public class PlayerActionKeySetupState : SceneState
+    public class PlayerActionKeySetupState : SceneStateBehavior<object, object>
     {
         private static readonly ReadOnlyCollection<Player.Action> actionSequence = new ReadOnlyCollection<Player.Action>(new Player.Action[]{
             Player.Action.Left,
@@ -51,7 +51,7 @@ namespace APlusOrFail.Setup.States.PlayerActionKeySetupState
             HideUI();
         }
 
-        protected override void OnLoad()
+        protected override void OnLoad(object arg)
         {
             charPlayer = character.GetComponent<CharacterPlayer>();
             actionKeyMap = new Dictionary<Player.Action, KeyCode>();
@@ -60,7 +60,7 @@ namespace APlusOrFail.Setup.States.PlayerActionKeySetupState
             cancelled = false;
         }
 
-        protected override void OnActivate()
+        protected override void OnActivate(ISceneState unloadedSceneState, object result)
         {
             ShowUI();
             enterKeyMessageText.text = $"Key for {TextForAction(actionSequence[setupingActionIndex])}";
@@ -71,15 +71,16 @@ namespace APlusOrFail.Setup.States.PlayerActionKeySetupState
             HideUI();
         }
 
-        protected override void OnUnLoad()
+        protected override object OnUnload()
         {
             charPlayer = null;
             actionKeyMap = null;
+            return null;
         }
 
         private void Update()
         {
-            if (state.IsAtLeast(State.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Activated))
             {
                 KeyCode? key = KeyDetector.GetKeyDowned();
                 if (key != null)
@@ -121,7 +122,7 @@ namespace APlusOrFail.Setup.States.PlayerActionKeySetupState
 
         private void OnCancelButtonClicked()
         {
-            if (state.IsAtLeast(State.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Activated))
             {
                 SceneStateManager.instance.PopSceneState();
                 cancelled = true;

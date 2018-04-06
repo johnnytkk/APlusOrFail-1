@@ -6,7 +6,7 @@ namespace APlusOrFail.Setup.States.PlayerNameAndColorSetupState
 {
     using Character;
 
-    public class PlayerNameAndColorSetupState : SceneState
+    public class PlayerNameAndColorSetupState : SceneStateBehavior<object, object>
     {
         public RectTransform uiScene;
         public InputField nameInputField;
@@ -31,7 +31,7 @@ namespace APlusOrFail.Setup.States.PlayerNameAndColorSetupState
             HideUI();
         }
 
-        protected override void OnLoad()
+        protected override void OnLoad(object arg)
         {
             cancelled = false;
             player = character.GetComponent<CharacterPlayer>().player;
@@ -39,7 +39,7 @@ namespace APlusOrFail.Setup.States.PlayerNameAndColorSetupState
             nameInputField.text = player.name;
         }
 
-        protected override void OnActivate()
+        protected override void OnActivate(ISceneState unloadedSceneState, object result)
         {
             ShowUI();
         }
@@ -49,14 +49,15 @@ namespace APlusOrFail.Setup.States.PlayerNameAndColorSetupState
             HideUI();
         }
 
-        protected override void OnUnLoad()
+        protected override object OnUnload()
         {
             player = null;
+            return null;
         }
 
         private void OnColorButtonSelected(ColorButton button)
         {
-            if (state.IsAtLeast(State.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Activated))
             {
                 color = button.color;
             }
@@ -64,7 +65,7 @@ namespace APlusOrFail.Setup.States.PlayerNameAndColorSetupState
 
         private void OnEnterButtonClicked()
         {
-            if (state.IsAtLeast(State.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Activated))
             {
                 player.name = nameInputField.text;
                 player.color = color;
@@ -74,7 +75,7 @@ namespace APlusOrFail.Setup.States.PlayerNameAndColorSetupState
 
         private void OnCancelButtonClicked()
         {
-            if (state.IsAtLeast(State.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Activated))
             {
                 cancelled = true;
                 SceneStateManager.instance.PopSceneState();

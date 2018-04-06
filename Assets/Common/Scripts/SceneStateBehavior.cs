@@ -1,57 +1,95 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 namespace APlusOrFail
 {
     public static class SceneStateExtensions
     {
-        public static bool IsAtLeast(this SceneState.State state, SceneState.State min)
+        public static bool IsAtLeast(this SceneStatePhase state, SceneStatePhase min)
         {
             return state >= min;
         }
     }
 
-    public class SceneState : MonoBehaviour
+    public enum SceneStatePhase
     {
-        public enum State
-        {
-            Initialized,
-            Loaded,
-            Activated
-        }
+        Initialized,
+        Loaded,
+        Activated
+    }
+
+    public interface ISceneState
+    {
+        Type argType { get; }
+        Type resultType { get; }
+
+        SceneStatePhase phase { get; }
+
+        void Load(object arg);
+
+        void Activate(ISceneState unloadedSceneState, object result);
+
+        void Deactivate();
+
+        object Unload();
+    }
+
+    public interface ISceneState<TArg, TResult> : ISceneState
+    {
+        void Load(TArg arg);
+
+        new TResult Unload();
+    }
+
+    public class SceneStateBehavior<TArg, TResult> : MonoBehaviour, ISceneState<TArg, TResult>
+    {
+        public Type argType { get { return typeof(TArg); } }
+        public Type resultType { get { return typeof(TResult); } }
         
-        public State state { get; private set; } = State.Initialized;
+        public SceneStatePhase phase { get; private set; } = SceneStatePhase.Initialized;
 
-        public void Load()
+        void ISceneState.Load(object arg)
         {
-            state = State.Loaded;
-            OnLoad();
+            Load((TArg)arg);
         }
 
-        public void Activate()
+        public void Load(TArg arg)
         {
-            state = State.Activated;
-            OnActivate();
+            phase = SceneStatePhase.Loaded;
+            OnLoad(arg);
+        }
+
+        public void Activate(ISceneState unloadedSceneState, object result)
+        {
+            phase = SceneStatePhase.Activated;
+            OnActivate(unloadedSceneState, result);
         }
 
         public void Deactivate()
         {
             OnDeactivate();
-            state = State.Loaded;
+            phase = SceneStatePhase.Loaded;
         }
 
-        public void UnLoad()
+        object ISceneState.Unload()
         {
-            OnUnLoad();
-            state = State.Initialized;
+            return Unload();
+        }
+
+        public TResult Unload()
+        {
+            TResult result = OnUnload();
+            phase = SceneStatePhase.Initialized;
+            return result;
         }
 
 
-        protected virtual void OnLoad() { }
+        protected virtual void OnLoad(TArg arg) { }
 
-        protected virtual void OnActivate() { }
+        protected virtual void OnActivate(ISceneState unloadedSceneState, object result) { }
 
         protected virtual void OnDeactivate() { }
 
-        protected virtual void OnUnLoad() { }
+        protected virtual TResult OnUnload() { return default(TResult); }
     }
 }

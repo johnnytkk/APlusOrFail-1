@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace APlusOrFail
@@ -15,11 +17,12 @@ namespace APlusOrFail
 
         public static SceneStateManager instance { get; private set; }
 
-        public SceneState initialSceneState;
+        public UnityEngine.Object initialSceneState;
 
-        private Stack<SceneState> SceneStateStack = new Stack<SceneState>();
+        private Stack<ISceneState> SceneStateStack = new Stack<ISceneState>();
         private Action pendingAction = Action.None;
-        private SceneState pendingSceneState;
+        private ISceneState pendingSceneState;
+        private object pendingArg;
 
         private void Awake()
         {
@@ -38,14 +41,14 @@ namespace APlusOrFail
         {
             while (SceneStateStack.Count > 0)
             {
-                SceneState sceneState = SceneStateStack.Pop();
-                if (sceneState.state.IsAtLeast(SceneState.State.Activated))
+                ISceneState sceneState = SceneStateStack.Pop();
+                if (sceneState.phase.IsAtLeast(SceneStatePhase.Activated))
                 {
                     sceneState.Deactivate();
                 }
-                if (sceneState.state.IsAtLeast(SceneState.State.Loaded))
+                if (sceneState.phase.IsAtLeast(SceneStatePhase.Loaded))
                 {
-                    sceneState.UnLoad();
+                    sceneState.Unload();
                 }
             }
             if (instance == this)
@@ -58,71 +61,90 @@ namespace APlusOrFail
         {
             if (initialSceneState != null)
             {
-                PushSceneState(initialSceneState);
+                if (initialSceneState.GetType().GetInterfaces()
+                    .Where(i => i.IsGenericType)
+                    .Any(i => i.GetGenericTypeDefinition() == typeof(ISceneState<,>)))
+                {
+                    ISceneState state = (ISceneState)initialSceneState;
+                    Type argType = state.argType;
+                    Type resultType = state.resultType;
+                    new Action<ISceneState<object, object>, object>(PushSceneState).Method
+                        .GetGenericMethodDefinition()
+                        .MakeGenericMethod(argType, resultType)
+                        .Invoke(this, new object[] { state, argType.IsValueType ? Activator.CreateInstance(argType) : null });
+                }
+                else
+                {
+                    Debug.LogErrorFormat($"initial scene state has type {initialSceneState.GetType()} which does not implement {typeof(ISceneState<,>)}");
+                }
             }
         }
 
         private void Update()
         {
             Action pendingAction = this.pendingAction;
-            SceneState pendingSceneState = this.pendingSceneState;
+            ISceneState pendingSceneState = this.pendingSceneState;
+            object pendingArg = this.pendingArg;
 
             this.pendingAction = Action.None;
             this.pendingSceneState = null;
+            this.pendingArg = null;
 
             switch (pendingAction)
             {
                 case Action.Push:
                     if (SceneStateStack.Count > 0)
                     {
-                        SceneState scene = SceneStateStack.Peek();
+                        ISceneState scene = SceneStateStack.Peek();
                         scene.Deactivate();
                     }
                     SceneStateStack.Push(pendingSceneState);
-                    pendingSceneState.Load();
-                    pendingSceneState.Activate();
+                    pendingSceneState.Load(pendingArg);
+                    pendingSceneState.Activate(null, null);
                     break;
 
                 case Action.Replace:
                     if (SceneStateStack.Count > 0)
                     {
-                        SceneState scene = SceneStateStack.Peek();
-                        scene.Deactivate();
-                        scene.UnLoad();
+                        ISceneState unloadedSceneState = SceneStateStack.Peek();
+                        unloadedSceneState.Deactivate();
+                        unloadedSceneState.Unload();
                         SceneStateStack.Pop();
                     }
                     SceneStateStack.Push(pendingSceneState);
-                    pendingSceneState.Load();
-                    pendingSceneState.Activate();
+                    pendingSceneState.Load(pendingArg);
+                    pendingSceneState.Activate(null, null);
                     break;
 
                 case Action.Pop:
                     if (SceneStateStack.Count > 0)
                     {
-                        SceneState detachedScene = SceneStateStack.Peek();
+                        ISceneState detachedScene = SceneStateStack.Peek();
                         detachedScene.Deactivate();
-                        detachedScene.UnLoad();
+                        object result = detachedScene.Unload();
                         SceneStateStack.Pop();
                         if (SceneStateStack.Count > 0)
                         {
-                            SceneState topScene = SceneStateStack.Peek();
-                            topScene.Activate();
+                            ISceneState topScene = SceneStateStack.Peek();
+                            topScene.Activate(detachedScene, result);
                         }
                     }
                     break;
             }
         }
 
-        public void PushSceneState(SceneState sceneState)
+        public void PushSceneState<TA, TR>(ISceneState<TA, TR> sceneState, TR arg)
         {
             pendingAction = Action.Push;
             pendingSceneState = sceneState;
+            pendingArg = arg;
         }
 
-        public void ReplaceSceneState(SceneState sceneState)
+        public void ReplaceSceneState<TA, TR>(ISceneState<TA, TR> sceneState, TR arg)
         {
             pendingAction = Action.Replace;
             pendingSceneState = sceneState;
+            pendingArg = arg;
         }
 
         public void PopSceneState()

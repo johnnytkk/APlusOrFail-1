@@ -7,7 +7,7 @@ namespace APlusOrFail.Setup.States.DefaultSceneState
     using PlayerNameAndColorSetupState;
     using PlayerActionKeySetupState;
 
-    public class DefaultState : SceneState
+    public class DefaultState : SceneStateBehavior<object, object>
     {
 
         public PlayerNameAndColorSetupState inputPlayerNameUIScene;
@@ -27,7 +27,7 @@ namespace APlusOrFail.Setup.States.DefaultSceneState
 
         private void OnCharacterSelected(Selectable selectedChar)
         {
-            if (state.IsAtLeast(State.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Activated))
             {
                 CharacterPlayer charPlayer = selectedChar.GetComponent<CharacterPlayer>();
                 if (charPlayer.player == null)
@@ -36,19 +36,19 @@ namespace APlusOrFail.Setup.States.DefaultSceneState
                     {
                         characterSprite = selectedChar.GetComponent<CharacterSprite>().overrideCharacterSprite
                     };
-                    SceneStateManager.instance.PushSceneState(inputPlayerNameUIScene);
+                    SceneStateManager.instance.PushSceneState(inputPlayerNameUIScene, null);
                     activeNameColorSetupScene = inputPlayerNameUIScene;
                     activeNameColorSetupScene.character = selectedChar.gameObject;
                 }
                 else
                 {
-                    SceneStateManager.instance.PushSceneState(charOptionUIScene);
+                    SceneStateManager.instance.PushSceneState(charOptionUIScene, null);
                     charOptionUIScene.character = selectedChar.gameObject;
                 }
             }
         }
 
-        protected override void OnActivate()
+        protected override void OnActivate(ISceneState unloadedSceneState, object result)
         {
             if (activeNameColorSetupScene != null)
             {
@@ -60,7 +60,7 @@ namespace APlusOrFail.Setup.States.DefaultSceneState
                 }
                 else
                 {
-                    SceneStateManager.instance.PushSceneState(actionKeySetupUIScene);
+                    SceneStateManager.instance.PushSceneState(actionKeySetupUIScene, null);
                     activeKeySetupScene = actionKeySetupUIScene;
                     activeKeySetupScene.character = activeNameColorSetupScene.character;
                 }

@@ -8,7 +8,7 @@ namespace APlusOrFail.Setup.States.CharacterOptionState
     using CharacterSelectionState;
     using PlayerActionKeySetupState;
 
-    public class CharacterOptionsState : SceneState
+    public class CharacterOptionsState : SceneStateBehavior<object, object>
     {
         public RectTransform uiScene;
         public Button changeNameColorButton;
@@ -36,7 +36,7 @@ namespace APlusOrFail.Setup.States.CharacterOptionState
             HideUI();
         }
 
-        protected override void OnActivate()
+        protected override void OnActivate(ISceneState unloadedSceneState, object result)
         {
             ShowUI();
             if (activeCharSelectionUIScene != null)
@@ -56,18 +56,18 @@ namespace APlusOrFail.Setup.States.CharacterOptionState
 
         private void OnChangeNameColorButtonClicked()
         {
-            if (state.IsAtLeast(State.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Activated))
             {
-                SceneStateManager.instance.PushSceneState(nameColorSetupUIScene);
+                SceneStateManager.instance.PushSceneState(nameColorSetupUIScene, null);
                 nameColorSetupUIScene.character = character;
             }
         }
 
         private void OnChooseCharacterButtonClicked()
         {
-            if (state.IsAtLeast(State.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Activated))
             {
-                SceneStateManager.instance.PushSceneState(charSelectionUIScene);
+                SceneStateManager.instance.PushSceneState(charSelectionUIScene, null);
                 activeCharSelectionUIScene = charSelectionUIScene;
                 activeCharSelectionUIScene.originalCharacter = character;
             }
@@ -75,16 +75,16 @@ namespace APlusOrFail.Setup.States.CharacterOptionState
 
         private void OnRemapActionKeyButtonClicked()
         {
-            if (state.IsAtLeast(State.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Activated))
             {
-                SceneStateManager.instance.PushSceneState(actionKeySetupUIScene);
+                SceneStateManager.instance.PushSceneState(actionKeySetupUIScene, null);
                 actionKeySetupUIScene.character = character;
             }
         }
 
         private void OnCloseButtonClicked()
         {
-            if (state.IsAtLeast(State.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Activated))
             {
                 SceneStateManager.instance.PopSceneState();
             }
@@ -92,7 +92,7 @@ namespace APlusOrFail.Setup.States.CharacterOptionState
 
         private void OnDeletePlayerButtonClicked()
         {
-            if (state.IsAtLeast(State.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Activated))
             {
                 CharacterPlayer charPlayer = character.GetComponent<CharacterPlayer>();
                 charPlayer.player.Delete();
