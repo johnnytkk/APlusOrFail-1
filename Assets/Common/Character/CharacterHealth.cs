@@ -1,26 +1,47 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using UnityEngine;
 
 namespace APlusOrFail.Character
 {
-    public class CharacterHealth : PropertyFieldBehavior
+    public class CharacterHealth : MonoBehaviour
     {
-        [HideInInspector, SerializeField]
-        private int _health;
-        [EditorPropertyField]
-        public int health
+        public class ChangeDatum
         {
-            get
+            public readonly int changes;
+
+            public ChangeDatum(int changes)
             {
-                return _health;
-            }
-            set
-            {
-                _health = value;
-                onHealthChanged?.Invoke(this, value);
+                this.changes = changes;
             }
         }
 
-        public event EventHandler<CharacterHealth, int> onHealthChanged;
+
+        public int initialHealth;
+
+        public int health { get; private set; }
+        public readonly ReadOnlyCollection<ChangeDatum> changeData;
+        public event EventHandler<CharacterHealth, ChangeDatum> onHealthChanged;
+
+        private readonly List<ChangeDatum> _changeData = new List<ChangeDatum>();
+
+
+        public CharacterHealth()
+        {
+            changeData = new ReadOnlyCollection<ChangeDatum>(_changeData);
+        }
+
+        private void Start()
+        {
+            health = initialHealth;
+        }
+
+        public void Change(ChangeDatum changeDatum)
+        {
+            health += changeDatum.changes;
+            _changeData.Add(changeDatum);
+            onHealthChanged?.Invoke(this, changeDatum);
+        }
         
     }
 }
