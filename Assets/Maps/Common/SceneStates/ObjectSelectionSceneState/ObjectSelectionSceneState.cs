@@ -70,7 +70,7 @@ namespace APlusOrFail.Maps.SceneStates.ObjectSelectionSceneState
                 GameObject obj = Instantiate(objectPrefabs[i], transform);
                 attachedObjects.Add(obj);
 
-                obj.layer = objectLayerIndex;
+                obj.SetLayerRecursively(objectLayerIndex);
 
                 // https://answers.unity.com/questions/1007585/reading-and-setting-asn-objects-global-scale-with.html
 
@@ -140,7 +140,7 @@ namespace APlusOrFail.Maps.SceneStates.ObjectSelectionSceneState
                         GameObject selectedObject = Physics2D.OverlapPoint(keyCursor.location, 1 << objectLayerIndex)?.gameObject;
                         if (selectedObject != null)
                         {
-                            selectedObjectsInternal.Add(keyCursor.player, selectedObject.GetComponent<ObjectPrefabInfo>().prefabLink.prefab);
+                            selectedObjectsInternal.Add(keyCursor.player, selectedObject.GetComponentInParent<ObjectPrefabInfo>().prefab);
 
                             RemoveKeyCursor(keyCursor);
 
@@ -149,7 +149,7 @@ namespace APlusOrFail.Maps.SceneStates.ObjectSelectionSceneState
 
                             if (keyCursors.Count == 0 || attachedObjects.Count == 0)
                             {
-                                SceneStateManager.instance.PopSceneState();
+                                SceneStateManager.instance.Pop(this);
                             }
                         }
                     }

@@ -58,7 +58,7 @@ namespace APlusOrFail.Setup.States.CharacterOptionState
         {
             if (phase.IsAtLeast(SceneStatePhase.Activated))
             {
-                SceneStateManager.instance.PushSceneState(nameColorSetupUIScene, null);
+                SceneStateManager.instance.Push(nameColorSetupUIScene, null);
                 nameColorSetupUIScene.character = character;
             }
         }
@@ -67,7 +67,7 @@ namespace APlusOrFail.Setup.States.CharacterOptionState
         {
             if (phase.IsAtLeast(SceneStatePhase.Activated))
             {
-                SceneStateManager.instance.PushSceneState(charSelectionUIScene, null);
+                SceneStateManager.instance.Push(charSelectionUIScene, null);
                 activeCharSelectionUIScene = charSelectionUIScene;
                 activeCharSelectionUIScene.originalCharacter = character;
             }
@@ -77,7 +77,7 @@ namespace APlusOrFail.Setup.States.CharacterOptionState
         {
             if (phase.IsAtLeast(SceneStatePhase.Activated))
             {
-                SceneStateManager.instance.PushSceneState(actionKeySetupUIScene, null);
+                SceneStateManager.instance.Push(actionKeySetupUIScene, null);
                 actionKeySetupUIScene.character = character;
             }
         }
@@ -86,7 +86,7 @@ namespace APlusOrFail.Setup.States.CharacterOptionState
         {
             if (phase.IsAtLeast(SceneStatePhase.Activated))
             {
-                SceneStateManager.instance.PopSceneState();
+                SceneStateManager.instance.Pop(this);
             }
         }
 
@@ -97,7 +97,7 @@ namespace APlusOrFail.Setup.States.CharacterOptionState
                 CharacterPlayer charPlayer = character.GetComponent<CharacterPlayer>();
                 charPlayer.player.Delete();
                 charPlayer.player = null;
-                SceneStateManager.instance.PopSceneState();
+                SceneStateManager.instance.Pop(this);
             }
         }
 

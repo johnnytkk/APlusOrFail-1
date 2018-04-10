@@ -4,7 +4,6 @@ namespace APlusOrFail.Objects
 {
     public class ObjectGridSize : MonoBehaviour
     {
-        public int width;
-        public int height;
+        public Vector2Int gridSize = Vector2Int.one;
     }
 }

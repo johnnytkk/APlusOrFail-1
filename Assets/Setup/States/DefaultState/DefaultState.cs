@@ -36,13 +36,13 @@ namespace APlusOrFail.Setup.States.DefaultSceneState
                     {
                         characterSprite = selectedChar.GetComponent<CharacterSprite>().overrideCharacterSprite
                     };
-                    SceneStateManager.instance.PushSceneState(inputPlayerNameUIScene, null);
+                    SceneStateManager.instance.Push(inputPlayerNameUIScene, null);
                     activeNameColorSetupScene = inputPlayerNameUIScene;
                     activeNameColorSetupScene.character = selectedChar.gameObject;
                 }
                 else
                 {
-                    SceneStateManager.instance.PushSceneState(charOptionUIScene, null);
+                    SceneStateManager.instance.Push(charOptionUIScene, null);
                     charOptionUIScene.character = selectedChar.gameObject;
                 }
             }
@@ -60,7 +60,7 @@ namespace APlusOrFail.Setup.States.DefaultSceneState
                 }
                 else
                 {
-                    SceneStateManager.instance.PushSceneState(actionKeySetupUIScene, null);
+                    SceneStateManager.instance.Push(actionKeySetupUIScene, null);
                     activeKeySetupScene = actionKeySetupUIScene;
                     activeKeySetupScene.character = activeNameColorSetupScene.character;
                 }

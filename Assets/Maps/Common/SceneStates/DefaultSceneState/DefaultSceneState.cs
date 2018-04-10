@@ -21,7 +21,6 @@ namespace APlusOrFail.Maps.SceneStates.DefaultSceneState
 
         private ObjectSelectionSceneState activeObjectSelectionUIScene;
         private PlaceObjectSceneState activePlaceObjectUIScene;
-        private RoundSceneState activeRoundUIScene;
 
         private int currentRound;
 
@@ -55,7 +54,6 @@ namespace APlusOrFail.Maps.SceneStates.DefaultSceneState
             else if (unloadedType == typeof(RoundSceneState))
             {
                 OnRoundUISceneFinished((ReadOnlyCollection<RoundSceneState.PlayerStatistics>)result);
-                activeRoundUIScene = null;
             }
         }
 
@@ -79,20 +77,19 @@ namespace APlusOrFail.Maps.SceneStates.DefaultSceneState
         {
             ++currentRound;
             activeObjectSelectionUIScene = objectSelectionUIScene;
-            SceneStateManager.instance.PushSceneState(objectSelectionUIScene, null);
+            SceneStateManager.instance.Push(objectSelectionUIScene, null);
         }
 
         private void OnObjectSelectionUISceneFinished(ObjectSelectionSceneState objectSelectionUIScene)
         {
-            SceneStateManager.instance.PushSceneState(placeObjectUIScene, null);
+            SceneStateManager.instance.Push(placeObjectUIScene, null);
             activePlaceObjectUIScene = placeObjectUIScene;
             activePlaceObjectUIScene.selectedObjects = new Dictionary<Player, GameObject>(objectSelectionUIScene.selectedObjects);
         }
 
         private void OnPlaceObjectUISceneFinished(PlaceObjectSceneState placeObjectUIScene)
         {
-            SceneStateManager.instance.PushSceneState(roundUIScene, null);
-            activeRoundUIScene = roundUIScene;
+            SceneStateManager.instance.Push(roundUIScene, null);
         }
 
         private void OnRoundUISceneFinished(ReadOnlyCollection<RoundSceneState.PlayerStatistics> playerStatistics)

@@ -9,7 +9,7 @@ namespace APlusOrFail.Maps.SceneStates.PlaceObjectSceneState
     using ObjectGrid;
 
     [RequireComponent(typeof(KeyCursorController))]
-    public class PlaceObjectSceneState : SceneStateBehavior<object, object>
+    public class PlaceObjectSceneState : SceneStateBehavior<Void, Void>
     {
         private class ObjectData
         {
@@ -39,10 +39,9 @@ namespace APlusOrFail.Maps.SceneStates.PlaceObjectSceneState
             HideUI();
         }
 
-        protected override void OnLoad(object arg)
+        protected override void OnLoad(Void arg)
         {
             base.OnLoad(arg);
-
         }
 
         protected override void OnActivate(ISceneState unloadedSceneState, object result)
@@ -111,14 +110,14 @@ namespace APlusOrFail.Maps.SceneStates.PlaceObjectSceneState
             {
                 foreach (KeyValuePair<KeyCursorController.KeyCursor, ObjectData> pair in keyCursorObjectsForUpdate)
                 {
-                    RectInt gridRect = ObjectGrid.instance.SnapToGrid(
-                        ObjectGrid.instance.WorldToGridCoordinate(pair.Key.location),
-                        new Vector2Int(pair.Value.objectGridSize.width, pair.Value.objectGridSize.height)
-                    );
+                    Vector2Int objectPosition = ObjectGrid.instance.WorldToGridCoordinate(pair.Key.location);
+                    objectPosition.x -= pair.Value.objectGridSize.gridSize.x;
 
-                    pair.Value.obj.transform.position = ObjectGrid.instance.GridRectToRect(gridRect).center;
+                    pair.Value.obj.transform.position = ObjectGrid.instance.GridToWorldPosition(objectPosition);
 
-                    bool placeable = ObjectGrid.instance.IsPlaceable(gridRect);
+                    RectInt objectRect = new RectInt(objectPosition, pair.Value.objectGridSize.gridSize);
+
+                    bool placeable = ObjectGrid.instance.IsPlaceable(objectRect);
                     if (placeable)
                     {
                         Debug.LogFormat("Can place!");
@@ -130,11 +129,15 @@ namespace APlusOrFail.Maps.SceneStates.PlaceObjectSceneState
 
                     if (placeable && HasKeyUp(pair.Key.player, Player.Action.Select))
                     {
+                        GameObject obj = Instantiate(pair.Value.obj.GetComponent<ObjectPrefabInfo>().prefab);
+                        ObjectGrid.instance.Add(objectRect, obj);
+                        obj.transform.position = ObjectGrid.instance.GridToWorldPosition(objectRect.min);
+
                         RemoveKeyCursorWithObject(pair.Key);
-                        ObjectGrid.instance.AddToGrid(gridRect, pair.Value.obj.GetComponent<ObjectPrefabInfo>().prefabLink.prefab);
+
                         if (keyCursorObjects.Count == 0)
                         {
-                            SceneStateManager.instance.PopSceneState();
+                            SceneStateManager.instance.Pop(this);
                         }
                     }
                 }

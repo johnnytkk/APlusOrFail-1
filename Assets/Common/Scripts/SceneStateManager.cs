@@ -19,7 +19,7 @@ namespace APlusOrFail
 
         public UnityEngine.Object initialSceneState;
 
-        private Stack<ISceneState> SceneStateStack = new Stack<ISceneState>();
+        private readonly Stack<ISceneState> sceneStateStack = new Stack<ISceneState>();
         private Action pendingAction = Action.None;
         private ISceneState pendingSceneState;
         private object pendingArg;
@@ -39,9 +39,9 @@ namespace APlusOrFail
 
         private void OnDestroy()
         {
-            while (SceneStateStack.Count > 0)
+            while (sceneStateStack.Count > 0)
             {
-                ISceneState sceneState = SceneStateStack.Pop();
+                ISceneState sceneState = sceneStateStack.Pop();
                 if (sceneState.phase.IsAtLeast(SceneStatePhase.Activated))
                 {
                     sceneState.Deactivate();
@@ -68,7 +68,7 @@ namespace APlusOrFail
                     ISceneState state = (ISceneState)initialSceneState;
                     Type argType = state.argType;
                     Type resultType = state.resultType;
-                    new Action<ISceneState<object, object>, object>(PushSceneState).Method
+                    new Action<ISceneState<object, object>, object>(Push).Method
                         .GetGenericMethodDefinition()
                         .MakeGenericMethod(argType, resultType)
                         .Invoke(this, new object[] { state, argType.IsValueType ? Activator.CreateInstance(argType) : null });
@@ -93,39 +93,39 @@ namespace APlusOrFail
             switch (pendingAction)
             {
                 case Action.Push:
-                    if (SceneStateStack.Count > 0)
+                    if (sceneStateStack.Count > 0)
                     {
-                        ISceneState scene = SceneStateStack.Peek();
+                        ISceneState scene = sceneStateStack.Peek();
                         scene.Deactivate();
                     }
-                    SceneStateStack.Push(pendingSceneState);
+                    sceneStateStack.Push(pendingSceneState);
                     pendingSceneState.Load(pendingArg);
                     pendingSceneState.Activate(null, null);
                     break;
 
                 case Action.Replace:
-                    if (SceneStateStack.Count > 0)
+                    if (sceneStateStack.Count > 0)
                     {
-                        ISceneState unloadedSceneState = SceneStateStack.Peek();
+                        ISceneState unloadedSceneState = sceneStateStack.Peek();
                         unloadedSceneState.Deactivate();
                         unloadedSceneState.Unload();
-                        SceneStateStack.Pop();
+                        sceneStateStack.Pop();
                     }
-                    SceneStateStack.Push(pendingSceneState);
+                    sceneStateStack.Push(pendingSceneState);
                     pendingSceneState.Load(pendingArg);
                     pendingSceneState.Activate(null, null);
                     break;
 
                 case Action.Pop:
-                    if (SceneStateStack.Count > 0)
+                    if (sceneStateStack.Count > 0)
                     {
-                        ISceneState detachedScene = SceneStateStack.Peek();
+                        ISceneState detachedScene = sceneStateStack.Peek();
                         detachedScene.Deactivate();
                         object result = detachedScene.Unload();
-                        SceneStateStack.Pop();
-                        if (SceneStateStack.Count > 0)
+                        sceneStateStack.Pop();
+                        if (sceneStateStack.Count > 0)
                         {
-                            ISceneState topScene = SceneStateStack.Peek();
+                            ISceneState topScene = sceneStateStack.Peek();
                             topScene.Activate(detachedScene, result);
                         }
                     }
@@ -133,27 +133,32 @@ namespace APlusOrFail
             }
         }
 
-        public void PushSceneState<TA, TR>(ISceneState<TA, TR> sceneState, TR arg)
+        public void Push<TA, TR>(ISceneState<TA, TR> sceneState, TA arg)
         {
             pendingAction = Action.Push;
             pendingSceneState = sceneState;
             pendingArg = arg;
         }
 
-        public void ReplaceSceneState<TA, TR>(ISceneState<TA, TR> sceneState, TR arg)
+        public void Replace<TA, TR>(ISceneState<TA, TR> sceneState, TA arg)
         {
             pendingAction = Action.Replace;
             pendingSceneState = sceneState;
             pendingArg = arg;
         }
 
-        public void PopSceneState()
+        public void Pop(ISceneState sceneState)
         {
+            if (sceneStateStack.Peek() != sceneState)
+            {
+                throw new InvalidOperationException("The scene to pop is not active!");
+            }
             pendingAction = Action.Pop;
             pendingSceneState = null;
+            pendingArg = null;
         }
 
-        public void RemovePendingAction()
+        public void Undo()
         {
             pendingAction = Action.None;
             pendingSceneState = null;

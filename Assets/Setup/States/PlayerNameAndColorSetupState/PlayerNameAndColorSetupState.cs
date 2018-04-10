@@ -69,7 +69,7 @@ namespace APlusOrFail.Setup.States.PlayerNameAndColorSetupState
             {
                 player.name = nameInputField.text;
                 player.color = color;
-                SceneStateManager.instance.PopSceneState();
+                SceneStateManager.instance.Pop(this);
             }
         }
 
@@ -78,7 +78,7 @@ namespace APlusOrFail.Setup.States.PlayerNameAndColorSetupState
             if (phase.IsAtLeast(SceneStatePhase.Activated))
             {
                 cancelled = true;
-                SceneStateManager.instance.PopSceneState();
+                SceneStateManager.instance.Pop(this);
             }
         }
 

@@ -43,15 +43,12 @@ namespace APlusOrFail
 
     public class SceneStateBehavior<TArg, TResult> : MonoBehaviour, ISceneState<TArg, TResult>
     {
-        public Type argType { get { return typeof(TArg); } }
-        public Type resultType { get { return typeof(TResult); } }
+        public Type argType => typeof(TArg);
+        public Type resultType => typeof(TResult);
         
         public SceneStatePhase phase { get; private set; } = SceneStatePhase.Initialized;
 
-        void ISceneState.Load(object arg)
-        {
-            Load((TArg)arg);
-        }
+        void ISceneState.Load(object arg) => Load((TArg)arg);
 
         public void Load(TArg arg)
         {
@@ -71,10 +68,7 @@ namespace APlusOrFail
             phase = SceneStatePhase.Loaded;
         }
 
-        object ISceneState.Unload()
-        {
-            return Unload();
-        }
+        object ISceneState.Unload() => Unload();
 
         public TResult Unload()
         {
@@ -90,6 +84,6 @@ namespace APlusOrFail
 
         protected virtual void OnDeactivate() { }
 
-        protected virtual TResult OnUnload() { return default(TResult); }
+        protected virtual TResult OnUnload() => default(TResult);
     }
 }

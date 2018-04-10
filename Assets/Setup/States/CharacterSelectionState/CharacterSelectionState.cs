@@ -48,7 +48,7 @@ namespace APlusOrFail.Setup.States.CharacterSelectionState
             if (phase.IsAtLeast(SceneStatePhase.Activated))
             {
                 cancelled = true;
-                SceneStateManager.instance.PopSceneState();
+                SceneStateManager.instance.Pop(this);
             }
         }
 
@@ -71,7 +71,7 @@ namespace APlusOrFail.Setup.States.CharacterSelectionState
                         originalCharPlayer.player = null;
                         selectedCharPlayer.player.characterSprite = selectedChar.GetComponent<CharacterSprite>().overrideCharacterSprite;
                     }
-                    SceneStateManager.instance.PopSceneState();
+                    SceneStateManager.instance.Pop(this);
                 }
                 
             }

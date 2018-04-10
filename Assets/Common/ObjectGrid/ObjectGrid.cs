@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace APlusOrFail.ObjectGrid
@@ -8,17 +9,21 @@ namespace APlusOrFail.ObjectGrid
     {
         private class GridObject
         {
+            private readonly ObjectGrid outer;
             public RectInt gridRect { get; }
-            public readonly Transform objectTransform;
+            public readonly GameObject obj;
 
-            public GridObject(RectInt gridRect, Transform objectTransform)
+            public GridObject(ObjectGrid outer, RectInt gridRect, GameObject obj)
             {
+                this.outer = outer;
                 this.gridRect = gridRect;
-                this.objectTransform = objectTransform;
+                this.obj = obj;
             }
         }
 
+
         public static ObjectGrid instance { get; private set; }
+
         
         public int gridColumnCount;
         public int gridRowCount;
@@ -55,11 +60,36 @@ namespace APlusOrFail.ObjectGrid
             grid = new GridObject[gridColumnCount, gridRowCount];
         }
 
-        public Vector2 WorldToGridCoordinate(Vector2 worldPosition)
+        public Vector2Int WorldToGridCoordinate(Vector2 worldPosition)
         {
-            return new Vector2((worldPosition.x - gridX) / gridColumnWidth, (worldPosition.y - gridY) / gridRowHeight);
+            return new Vector2Int(
+                Mathf.FloorToInt((worldPosition.x - gridX) / gridColumnWidth),
+                Mathf.FloorToInt((worldPosition.y - gridY) / gridRowHeight)
+            );
         }
 
+        public Vector2 GridToWorldPosition(Vector2Int gridPosition)
+        {
+            return new Vector2(
+                gridPosition.x * gridColumnWidth + gridX,
+                gridPosition.y * gridRowHeight + gridY
+            );
+        }
+
+        public Vector2 GridToWorldSize(Vector2Int gridSize)
+        {
+            return new Vector2(
+                gridSize.x * gridColumnWidth,
+                gridSize.y * gridRowHeight
+            );
+        }
+
+        public Rect GridToWorldRect(RectInt gridRect)
+        {
+            return new Rect(GridToWorldPosition(gridRect.min), GridToWorldSize(gridRect.size));
+        }
+
+        [Obsolete]
         public RectInt SnapToGrid(Vector2 gridCenterPosition, Vector2Int gridSize)
         {
             int width = gridSize.x;
@@ -85,15 +115,6 @@ namespace APlusOrFail.ObjectGrid
             return new RectInt(x, y, width, height);
         }
 
-        public Rect GridRectToRect(RectInt gridRect)
-        {
-            float x = gridRect.x * gridColumnWidth + gridX;
-            float y = gridRect.y * gridRowHeight + gridY;
-            float width = gridRect.width * gridColumnWidth;
-            float height = gridRect.height * gridRowHeight;
-            return new Rect(x, y, width, height);
-        }
-
         public bool IsPlaceable(RectInt gridRect)
         {
             if (!IsWithinRange(gridRect))
@@ -116,7 +137,7 @@ namespace APlusOrFail.ObjectGrid
             }
         }
 
-        public void AddToGrid(RectInt gridRect, GameObject objectPrefab)
+        public void Add(RectInt gridRect, GameObject obj)
         {
             if (!IsWithinRange(gridRect))
             {
@@ -126,8 +147,9 @@ namespace APlusOrFail.ObjectGrid
             {
                 throw new ArgumentException($"({gridRect}) has already been occupied");
             }
-            GameObject obj = Instantiate(objectPrefab, GridRectToRect(gridRect).center, Quaternion.identity);
-            GridObject gridObject = new GridObject(gridRect, obj.transform);
+            
+            GridObject gridObject = new GridObject(this, gridRect, obj);
+
             for (int x = gridRect.x; x < gridRect.width; ++x)
             {
                 for (int y = gridRect.y; y < gridRect.height; ++y)
@@ -137,12 +159,16 @@ namespace APlusOrFail.ObjectGrid
             }
         }
 
-        public void RemoveFromGrid(RectInt gridRect)
+        public IEnumerator<GameObject> Remove(RectInt gridRect)
         {
             if (!IsWithinRange(gridRect))
             {
                 throw new ArgumentOutOfRangeException($"({gridRect}) is not a valid rect");
             }
+            return RemoveImpl(gridRect);
+        }
+
+        private IEnumerator<GameObject> RemoveImpl(RectInt gridRect) {
             for (int x = gridRect.x; x < gridRect.width; ++x)
             {
                 for (int y = gridRect.y; y < gridRect.height; ++y)
@@ -150,7 +176,6 @@ namespace APlusOrFail.ObjectGrid
                     GridObject gridObject = grid[x, y];
                     if (gridObject != null)
                     {
-                        Destroy(gridObject.objectTransform.gameObject);
                         for (int i = gridObject.gridRect.x; i < gridObject.gridRect.width; ++i)
                         {
                             for (int j = gridObject.gridRect.y; j < gridObject.gridRect.height; ++j)
@@ -158,6 +183,7 @@ namespace APlusOrFail.ObjectGrid
                                 grid[i, j] = null;
                             }
                         }
+                        yield return gridObject.obj;
                     }
                 }
             }

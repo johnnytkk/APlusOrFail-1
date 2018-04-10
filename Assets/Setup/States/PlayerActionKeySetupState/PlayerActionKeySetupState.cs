@@ -115,7 +115,7 @@ namespace APlusOrFail.Setup.States.PlayerActionKeySetupState
                     {
                         charPlayer.player.MapActionToKey(pair.Key, pair.Value);
                     }
-                    SceneStateManager.instance.PopSceneState();
+                    SceneStateManager.instance.Pop(this);
                 }
             }
         }
@@ -124,7 +124,7 @@ namespace APlusOrFail.Setup.States.PlayerActionKeySetupState
         {
             if (phase.IsAtLeast(SceneStatePhase.Activated))
             {
-                SceneStateManager.instance.PopSceneState();
+                SceneStateManager.instance.Pop(this);
                 cancelled = true;
             }
         }

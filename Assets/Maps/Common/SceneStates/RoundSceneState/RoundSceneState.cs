@@ -7,7 +7,7 @@ namespace APlusOrFail.Maps.SceneStates.RoundSceneState
 {
     using Character;
 
-    public class RoundSceneState : SceneStateBehavior<object, ReadOnlyCollection<RoundSceneState.PlayerStatistics>>
+    public class RoundSceneState : SceneStateBehavior<Void, ReadOnlyCollection<RoundSceneState.PlayerStatistics>>
     {
         private class CharacterInfo
         {
@@ -42,8 +42,16 @@ namespace APlusOrFail.Maps.SceneStates.RoundSceneState
 
             public void Remove()
             {
-                character.GetComponent<CharacterPlayer>().player = null;
-                character.GetComponent<CharacterHealth>().onHealthChanged -= OnCharacterHealthChanged;
+                CharacterPlayer charPlayer = character.GetComponent<CharacterPlayer>();
+                CharacterHealth charHealth = character.GetComponent<CharacterHealth>();
+
+                enclosing.result.Add(new PlayerStatistics(charPlayer.player, charHealth.changeData));
+
+                charPlayer.player = null;
+                charHealth.onHealthChanged -= OnCharacterHealthChanged;
+
+                Destroy(character);
+
                 enclosing.characterInfos.Remove(this);
                 if (enclosing.characterInfos.Count == 0)
                 {
@@ -51,6 +59,7 @@ namespace APlusOrFail.Maps.SceneStates.RoundSceneState
                 }
             }
         }
+
 
         public class PlayerStatistics
         {
@@ -64,14 +73,15 @@ namespace APlusOrFail.Maps.SceneStates.RoundSceneState
             }
         }
 
+
         public GameObject characterPrefab;
         public Transform spawnPoint;
 
         
         private readonly List<CharacterInfo> characterInfos = new List<CharacterInfo>();
-        public ReadOnlyCollection<PlayerStatistics> result;
+        private readonly List<PlayerStatistics> result = new List<PlayerStatistics>();
 
-        protected override void OnLoad(object arg)
+        protected override void OnLoad(Void arg)
         {
             base.OnLoad(arg);
         }
@@ -100,14 +110,14 @@ namespace APlusOrFail.Maps.SceneStates.RoundSceneState
         protected override ReadOnlyCollection<PlayerStatistics> OnUnload()
         {
             base.OnUnload();
-            var result = this.result;
-            this.result = null;
+            var result = new ReadOnlyCollection<PlayerStatistics>(this.result.ToList());
+            this.result.Clear();
             return result;
         }
 
         private void OnAllCharacterDied()
         {
-
+            SceneStateManager.instance.Pop(this);
         }
     }
 }

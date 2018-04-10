@@ -390,6 +390,7 @@ MonoBehaviour:
   uiScene: {fileID: 1404030746}
   objectPrefabs:
   - {fileID: 1345059052953434, guid: 334fd18e4d53dea4e85b16d8e18e7860, type: 2}
+  - {fileID: 1041874561662664, guid: 1b3d76511e93e904794b3ea02b464059, type: 2}
 --- !u!114 &1064032729
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -627,18 +628,15 @@ Prefab:
       propertyPath: m_LocalScale.y
       value: 1
       objectReference: {fileID: 0}
-    - target: {fileID: 114182778574459502, guid: 334fd18e4d53dea4e85b16d8e18e7860,
-        type: 2}
+    - target: {fileID: 0}
       propertyPath: gridX
       value: 21
       objectReference: {fileID: 0}
-    - target: {fileID: 114182778574459502, guid: 334fd18e4d53dea4e85b16d8e18e7860,
-        type: 2}
+    - target: {fileID: 0}
       propertyPath: objectGrid
       value: 
       objectReference: {fileID: 215388802}
-    - target: {fileID: 114182778574459502, guid: 334fd18e4d53dea4e85b16d8e18e7860,
-        type: 2}
+    - target: {fileID: 0}
       propertyPath: gridY
       value: 20
       objectReference: {fileID: 0}
