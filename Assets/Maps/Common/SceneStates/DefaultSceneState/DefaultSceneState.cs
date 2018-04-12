@@ -82,9 +82,8 @@ namespace APlusOrFail.Maps.SceneStates.DefaultSceneState
 
         private void OnObjectSelectionUISceneFinished(ObjectSelectionSceneState objectSelectionUIScene)
         {
-            SceneStateManager.instance.Push(placeObjectUIScene, null);
+            SceneStateManager.instance.Push(placeObjectUIScene, new Dictionary<Player, GameObject>(objectSelectionUIScene.selectedObjects));
             activePlaceObjectUIScene = placeObjectUIScene;
-            activePlaceObjectUIScene.selectedObjects = new Dictionary<Player, GameObject>(objectSelectionUIScene.selectedObjects);
         }
 
         private void OnPlaceObjectUISceneFinished(PlaceObjectSceneState placeObjectUIScene)

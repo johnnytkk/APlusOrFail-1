@@ -6,6 +6,7 @@ namespace APlusOrFail.Maps.SceneStates.ObjectSelectionSceneState
 {
     using KeyCursorController;
     using Objects;
+    using ObjectGrid;
     
     [RequireComponent(typeof(KeyCursorController))]
     public class ObjectSelectionSceneState : SceneStateBehavior<object, object>
@@ -67,21 +68,26 @@ namespace APlusOrFail.Maps.SceneStates.ObjectSelectionSceneState
             float angleInterval = 2 * Mathf.PI / objectPrefabs.Count;
             for (int i = 0; i < objectPrefabs.Count; ++i)
             {
-                GameObject obj = Instantiate(objectPrefabs[i], transform);
+                // https://answers.unity.com/questions/1007585/reading-and-setting-asn-objects-global-scale-with.html
+
+                GameObject obj = Instantiate(objectPrefabs[i]);
+
+                ObjectGridPlacer gridPlacer = obj.GetComponent<ObjectGridPlacer>();
+                gridPlacer.enabled = false;
+
+                obj.transform.parent = uiScene; // Fix the scale
                 attachedObjects.Add(obj);
 
                 obj.SetLayerRecursively(objectLayerIndex);
 
-                // https://answers.unity.com/questions/1007585/reading-and-setting-asn-objects-global-scale-with.html
-
-                obj.transform.localScale = Vector3.one;
-                Vector3 scale = new Vector3(1 / obj.transform.lossyScale.x, 1 / obj.transform.lossyScale.y, 1 / obj.transform.lossyScale.z);
-
-                obj.transform.localScale = scale;
+                RectInt objLocalGridBound = obj.GetComponentsInChildren<ObjectGridRect>().GetLocalRects().GetOuterBound();
+                Rect objLocalWorldBound = new Rect(ObjectGrid.instance.GridToWorldSize(objLocalGridBound.position), ObjectGrid.instance.GridToWorldSize(objLocalGridBound.size));
+                Vector2 center = (objLocalWorldBound.min + objLocalWorldBound.max) / 2;
 
                 float angle = Mathf.PI / 2 - angleInterval * i;
-                Vector2 locationPosition = new Vector2(2 * Mathf.Cos(angle) * scale.x, 2 * Mathf.Sin(angle) * scale.y);
-                obj.transform.localPosition = locationPosition;
+                Vector2 position = new Vector2(2 * Mathf.Cos(angle), 2 * Mathf.Sin(angle));
+                position -= center;
+                obj.transform.position = position;
             }
 
             foreach (Player player in Player.players)

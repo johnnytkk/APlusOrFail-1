@@ -21,6 +21,7 @@ GameObject:
   - component: {fileID: 4468545907124892}
   - component: {fileID: 212270307874952032}
   - component: {fileID: 61109881219491560}
+  - component: {fileID: 114311541072469748}
   m_Layer: 0
   m_Name: Goal_Flag
   m_TagString: Untagged
@@ -36,8 +37,8 @@ GameObject:
   serializedVersion: 5
   m_Component:
   - component: {fileID: 4913727249728560}
-  - component: {fileID: 114616178265287588}
   - component: {fileID: 114412846348281394}
+  - component: {fileID: 114973465544954540}
   m_Layer: 0
   m_Name: Goal
   m_TagString: Untagged
@@ -97,6 +98,22 @@ BoxCollider2D:
   serializedVersion: 2
   m_Size: {x: 1, y: 2}
   m_EdgeRadius: 0
+--- !u!114 &114311541072469748
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 1041874561662664}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ebfcef155a8e32e4ead7b7783c602603, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  gridLocalRect:
+    x: 0
+    y: 0
+    width: 1
+    height: 2
 --- !u!114 &114412846348281394
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -110,7 +127,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   prefabLink: {fileID: 114315567189308890, guid: 1d904f72aa8c9b9428702a261c46c550,
     type: 2}
---- !u!114 &114616178265287588
+--- !u!114 &114973465544954540
 MonoBehaviour:
   m_ObjectHideFlags: 1
   m_PrefabParentObject: {fileID: 0}
@@ -118,10 +135,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 1748484835641516}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ebfcef155a8e32e4ead7b7783c602603, type: 3}
+  m_Script: {fileID: 11500000, guid: 4cfe3b30505929b47a180c7fc930356f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gridSize: {x: 1, y: 2}
+  _gridPosition: {x: 0, y: 0}
+  _rotation: 0
+  _registerInGrid: 1
 --- !u!212 &212270307874952032
 SpriteRenderer:
   m_ObjectHideFlags: 1

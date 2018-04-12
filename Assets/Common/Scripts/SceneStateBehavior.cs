@@ -77,13 +77,18 @@ namespace APlusOrFail
             return result;
         }
 
+        protected TArg arg { get; private set; }
 
-        protected virtual void OnLoad(TArg arg) { }
+        protected virtual void OnLoad(TArg arg) => this.arg = arg;
 
         protected virtual void OnActivate(ISceneState unloadedSceneState, object result) { }
 
         protected virtual void OnDeactivate() { }
 
-        protected virtual TResult OnUnload() => default(TResult);
+        protected virtual TResult OnUnload()
+        {
+            arg = default(TArg);
+            return default(TResult);
+        }
     }
 }

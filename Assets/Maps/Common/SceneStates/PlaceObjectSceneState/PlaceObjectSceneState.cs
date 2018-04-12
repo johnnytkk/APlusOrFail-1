@@ -9,39 +9,90 @@ namespace APlusOrFail.Maps.SceneStates.PlaceObjectSceneState
     using ObjectGrid;
 
     [RequireComponent(typeof(KeyCursorController))]
-    public class PlaceObjectSceneState : SceneStateBehavior<Void, Void>
+    public class PlaceObjectSceneState : SceneStateBehavior<IDictionary<Player, GameObject>, Void>
     {
-        private class ObjectData
+        private class ObjectCursor
         {
-            public readonly GameObject obj;
-            public readonly ObjectGridSize objectGridSize;
+            private readonly PlaceObjectSceneState outer;
 
-            public ObjectData(GameObject obj)
+            public readonly Player player;
+            public readonly KeyCursorController.KeyCursor keyCursor;
+            public readonly GameObject obj;
+            public readonly ObjectGridPlacer objectGridPlacer;
+            public readonly RectInt outerBound;
+
+            public ObjectCursor(PlaceObjectSceneState outer, Player player, GameObject prefab)
             {
-                this.obj = obj;
-                objectGridSize = obj.GetComponent<ObjectGridSize>();
+                this.outer = outer;
+
+                this.player = player;
+                keyCursor = outer.keyCursorController.AddKeyCursor(player);
+                obj = Instantiate(prefab);
+                objectGridPlacer = obj.GetComponent<ObjectGridPlacer>();
+                outerBound = obj.GetComponentsInChildren<ObjectGridRect>().GetLocalRects().GetOuterBound();
+
+                objectGridPlacer.registerInGrid = false;
+
+                outer.objectCursors.Add(this);
+            }
+
+            public void Update()
+            {
+                RectInt rotatedOuterBound = outerBound.Rotate(objectGridPlacer.rotation);
+                Vector2Int gridOffset = new Vector2Int(-rotatedOuterBound.xMax, -rotatedOuterBound.yMin + 1);
+                Vector2Int objGridPosition = ObjectGrid.instance.WorldToGridPosition(keyCursor.location) + gridOffset;
+
+                objectGridPlacer.gridPosition = objGridPosition;
+
+                bool placable = objectGridPlacer.IsRegisterable();
+                if (placable)
+                {
+                    Debug.LogFormat($"Player {player.id} can place!");
+                }
+                else
+                {
+                    Debug.LogFormat($"Player {player.id} cannot place!");
+                }
+
+                if (placable && HasKeyUp(player, Player.Action.Select))
+                {
+                    objectGridPlacer.registerInGrid = true;
+                    Remove();
+                }
+                else if (HasKeyUp(player, Player.Action.Cancel))
+                {
+                    objectGridPlacer.rotation = (ObjectGridRects.Rotation)(((int)objectGridPlacer.rotation + 1) % 4);
+                }
+            }
+
+            private bool HasKeyUp(Player player, Player.Action action)
+            {
+                KeyCode? code = player.GetKeyForAction(action);
+                return code != null && Input.GetKeyUp(code.Value);
+            }
+
+            public void Remove()
+            {
+                keyCursor.Remove();
+                outer.objectCursors.Remove(this);
+
+                if (outer.objectCursors.Count == 0)
+                {
+                    SceneStateManager.instance.Pop(outer);
+                }
             }
         }
 
         public RectTransform uiScene;
 
-        public IDictionary<Player, GameObject> selectedObjects;
-
         private KeyCursorController keyCursorController;
 
-        private readonly Dictionary<KeyCursorController.KeyCursor, ObjectData> keyCursorObjects = new Dictionary<KeyCursorController.KeyCursor, ObjectData>();
-        private KeyValuePair<KeyCursorController.KeyCursor, ObjectData>[] keyCursorObjectsForUpdate;
-        private bool keyCursorObjectsModified;
+        private readonly List<ObjectCursor> objectCursors = new List<ObjectCursor>();
 
         private void Start()
         {
             keyCursorController = GetComponent<KeyCursorController>();
             HideUI();
-        }
-
-        protected override void OnLoad(Void arg)
-        {
-            base.OnLoad(arg);
         }
 
         protected override void OnActivate(ISceneState unloadedSceneState, object result)
@@ -56,98 +107,34 @@ namespace APlusOrFail.Maps.SceneStates.PlaceObjectSceneState
             HideUI();
         }
 
+        private void Update()
+        {
+            if (phase.IsAtLeast(SceneStatePhase.Activated))
+            {
+                for (int i = objectCursors.Count - 1; i >= 0; --i)
+                {
+                    objectCursors[i].Update();
+                }
+            }
+        }
+
         private void ShowUI()
         {
             uiScene.gameObject.SetActive(true);
 
-            foreach (KeyValuePair<Player, GameObject> pair in selectedObjects)
+            foreach (KeyValuePair<Player, GameObject> pair in arg)
             {
-                AddKeyCursorWithObject(pair.Key, pair.Value);
+                new ObjectCursor(this, pair.Key, pair.Value);
             }
         }
 
         private void HideUI()
         {
             uiScene.gameObject.SetActive(false);
-            foreach (KeyValuePair<KeyCursorController.KeyCursor, ObjectData> pair in keyCursorObjects)
+            for (int i = objectCursors.Count - 1; i >= 0; --i)
             {
-                pair.Key.Remove();
-                keyCursorObjects.Remove(pair.Key);
-                Destroy(pair.Value.obj);
-                keyCursorObjectsModified = true;
+                objectCursors[i].Remove();
             }
-            if (keyCursorObjectsModified) keyCursorObjects.Clear();
-        }
-
-        private void AddKeyCursorWithObject(Player player, GameObject objectPrefab)
-        {
-            KeyCursorController.KeyCursor keyCursor = keyCursorController.AddKeyCursor(player);
-            GameObject obj = Instantiate(objectPrefab);
-            keyCursorObjects.Add(keyCursor, new ObjectData(obj));
-            keyCursorObjectsModified = true;
-        }
-
-        private void RemoveKeyCursorWithObject(KeyCursorController.KeyCursor keyCursor)
-        {
-            ObjectData objectData;
-            if (keyCursorObjects.TryGetValue(keyCursor, out objectData))
-            {
-                keyCursor.Remove();
-                Destroy(objectData.obj);
-                keyCursorObjects.Remove(keyCursor);
-                keyCursorObjectsModified = true;
-            }
-        }
-
-        private void Update()
-        {
-            if (keyCursorObjectsModified)
-            {
-                keyCursorObjectsForUpdate = keyCursorObjects.Count > 0 ? keyCursorObjects.ToArray() : null;
-                keyCursorObjectsModified = false;
-            }
-            if (phase.IsAtLeast(SceneStatePhase.Activated) && keyCursorObjectsForUpdate != null)
-            {
-                foreach (KeyValuePair<KeyCursorController.KeyCursor, ObjectData> pair in keyCursorObjectsForUpdate)
-                {
-                    Vector2Int objectPosition = ObjectGrid.instance.WorldToGridCoordinate(pair.Key.location);
-                    objectPosition.x -= pair.Value.objectGridSize.gridSize.x;
-
-                    pair.Value.obj.transform.position = ObjectGrid.instance.GridToWorldPosition(objectPosition);
-
-                    RectInt objectRect = new RectInt(objectPosition, pair.Value.objectGridSize.gridSize);
-
-                    bool placeable = ObjectGrid.instance.IsPlaceable(objectRect);
-                    if (placeable)
-                    {
-                        Debug.LogFormat("Can place!");
-                    }
-                    else
-                    {
-                        Debug.LogFormat("Cannot place!");
-                    }
-
-                    if (placeable && HasKeyUp(pair.Key.player, Player.Action.Select))
-                    {
-                        GameObject obj = Instantiate(pair.Value.obj.GetComponent<ObjectPrefabInfo>().prefab);
-                        ObjectGrid.instance.Add(objectRect, obj);
-                        obj.transform.position = ObjectGrid.instance.GridToWorldPosition(objectRect.min);
-
-                        RemoveKeyCursorWithObject(pair.Key);
-
-                        if (keyCursorObjects.Count == 0)
-                        {
-                            SceneStateManager.instance.Pop(this);
-                        }
-                    }
-                }
-            }
-        }
-
-        private bool HasKeyUp(Player player, Player.Action action)
-        {
-            KeyCode? code = player.GetKeyForAction(action);
-            return code != null && Input.GetKeyUp(code.Value);
         }
     }
 }

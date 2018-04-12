@@ -1,22 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
 using UnityEngine;
 
 namespace APlusOrFail.ObjectGrid
 {
-    [ExecuteInEditMode]
     public class ObjectGrid : MonoBehaviour
     {
         private class GridObject
         {
             private readonly ObjectGrid outer;
-            public RectInt gridRect { get; }
+            public readonly ReadOnlyCollection<RectInt> rects;
             public readonly GameObject obj;
 
-            public GridObject(ObjectGrid outer, RectInt gridRect, GameObject obj)
+            public GridObject(ObjectGrid outer, IEnumerable<RectInt> rects, GameObject obj)
             {
                 this.outer = outer;
-                this.gridRect = gridRect;
+                this.rects = new ReadOnlyCollection<RectInt>(rects.ToList());
                 this.obj = obj;
             }
         }
@@ -33,6 +34,7 @@ namespace APlusOrFail.ObjectGrid
         public float gridRowHeight = 1;
 
         private GridObject[,] grid;
+        private readonly Dictionary<GameObject, GridObject> objectToGridMap = new Dictionary<GameObject, GridObject>();
 
         private void Awake()
         {
@@ -45,6 +47,8 @@ namespace APlusOrFail.ObjectGrid
                 Destroy(this);
                 Debug.LogErrorFormat("Found another object grid!");
             }
+
+            grid = new GridObject[gridColumnCount, gridRowCount];
         }
 
         private void OnDestroy()
@@ -54,13 +58,8 @@ namespace APlusOrFail.ObjectGrid
                 instance = null;
             }
         }
-        
-        private void Start()
-        {
-            grid = new GridObject[gridColumnCount, gridRowCount];
-        }
 
-        public Vector2Int WorldToGridCoordinate(Vector2 worldPosition)
+        public Vector2Int WorldToGridPosition(Vector2 worldPosition)
         {
             return new Vector2Int(
                 Mathf.FloorToInt((worldPosition.x - gridX) / gridColumnWidth),
@@ -89,30 +88,9 @@ namespace APlusOrFail.ObjectGrid
             return new Rect(GridToWorldPosition(gridRect.min), GridToWorldSize(gridRect.size));
         }
 
-        [Obsolete]
-        public RectInt SnapToGrid(Vector2 gridCenterPosition, Vector2Int gridSize)
+        public bool IsPlaceable(IEnumerable<RectInt> gridRects)
         {
-            int width = gridSize.x;
-            int height = gridSize.y;
-            int x;
-            int y;
-            if (width % 2 == 0)
-            {
-                x = Mathf.RoundToInt(gridCenterPosition.x) - width / 2;
-            }
-            else
-            {
-                x = Mathf.FloorToInt(Mathf.Round(gridCenterPosition.x - 0.5f) + 0.5f) - (width - 1) / 2;
-            }
-            if (height % 2 == 0)
-            {
-                y = Mathf.RoundToInt(gridCenterPosition.y) - height / 2;
-            }
-            else
-            {
-                y = Mathf.FloorToInt(Mathf.Round(gridCenterPosition.y - 0.5f) + 0.5f) - (height - 1) / 2;
-            }
-            return new RectInt(x, y, width, height);
+            return gridRects.All(r => IsPlaceable(r));
         }
 
         public bool IsPlaceable(RectInt gridRect)
@@ -123,9 +101,9 @@ namespace APlusOrFail.ObjectGrid
             }
             else
             {
-                for (int x = gridRect.x; x < gridRect.width; ++x)
+                for (int x = gridRect.xMin; x < gridRect.xMax; ++x)
                 {
-                    for (int y = gridRect.y; y < gridRect.height; ++y)
+                    for (int y = gridRect.yMin; y < gridRect.yMax; ++y)
                     {
                         if (grid[x, y] != null)
                         {
@@ -137,53 +115,76 @@ namespace APlusOrFail.ObjectGrid
             }
         }
 
-        public void Add(RectInt gridRect, GameObject obj)
+        public void Add(IEnumerable<RectInt> gridRects, GameObject obj)
         {
-            if (!IsWithinRange(gridRect))
+            RectInt? tempRect;
+            if ((tempRect = gridRects.Where(r => !IsWithinRange(r)).Select(r => (RectInt?)r).FirstOrDefault()) != null)
             {
-                throw new ArgumentOutOfRangeException($"({gridRect}) is not a valid rect");
+                throw new ArgumentOutOfRangeException($"({tempRect.Value}) is not in range");
             }
-            if (!IsPlaceable(gridRect))
+            if ((tempRect = gridRects.Where(r => !IsPlaceable(r)).Select(r => (RectInt?)r).FirstOrDefault()) != null)
             {
-                throw new ArgumentException($"({gridRect}) has already been occupied");
+                throw new ArgumentException($"({tempRect.Value}) has already been occupied");
             }
             
-            GridObject gridObject = new GridObject(this, gridRect, obj);
+            GridObject gridObject = new GridObject(this, gridRects, obj);
 
-            for (int x = gridRect.x; x < gridRect.width; ++x)
+            foreach (RectInt gridRect in gridRects)
             {
-                for (int y = gridRect.y; y < gridRect.height; ++y)
+                for (int x = gridRect.xMin; x < gridRect.xMax; ++x)
                 {
-                    grid[x, y] = gridObject;
+                    for (int y = gridRect.yMin; y < gridRect.yMax; ++y)
+                    {
+                        grid[x, y] = gridObject;
+                    }
                 }
             }
+
+            objectToGridMap.Add(obj, gridObject);
         }
 
-        public IEnumerator<GameObject> Remove(RectInt gridRect)
+        public void Remove(GameObject obj)
         {
-            if (!IsWithinRange(gridRect))
+            GridObject gridObject;
+            if (objectToGridMap.TryGetValue(obj, out gridObject))
             {
-                throw new ArgumentOutOfRangeException($"({gridRect}) is not a valid rect");
+                foreach (RectInt objRect in gridObject.rects)
+                {
+                    for (int i = objRect.xMin; i < objRect.xMax; ++i)
+                    {
+                        for (int j = objRect.yMin; j < objRect.yMax; ++j)
+                        {
+                            grid[i, j] = null;
+                        }
+                    }
+                }
+                objectToGridMap.Remove(obj);
             }
-            return RemoveImpl(gridRect);
         }
 
-        private IEnumerator<GameObject> RemoveImpl(RectInt gridRect) {
-            for (int x = gridRect.x; x < gridRect.width; ++x)
+        public void Remove(IEnumerable<RectInt> gridRects)
+        {
+            foreach (RectInt gridRect in gridRects)
             {
-                for (int y = gridRect.y; y < gridRect.height; ++y)
+                for (int x = gridRect.xMin; x < gridRect.xMax; ++x)
                 {
-                    GridObject gridObject = grid[x, y];
-                    if (gridObject != null)
+                    for (int y = gridRect.yMin; y < gridRect.yMax; ++y)
                     {
-                        for (int i = gridObject.gridRect.x; i < gridObject.gridRect.width; ++i)
+                        GridObject gridObject = grid[x, y];
+                        if (gridObject != null)
                         {
-                            for (int j = gridObject.gridRect.y; j < gridObject.gridRect.height; ++j)
+                            foreach (RectInt objRect in gridObject.rects)
                             {
-                                grid[i, j] = null;
+                                for (int i = objRect.xMin; i < objRect.xMax; ++i)
+                                {
+                                    for (int j = objRect.yMin; j < objRect.yMax; ++j)
+                                    {
+                                        grid[i, j] = null;
+                                    }
+                                }
                             }
+                            objectToGridMap.Remove(gridObject.obj);
                         }
-                        yield return gridObject.obj;
                     }
                 }
             }
@@ -192,7 +193,7 @@ namespace APlusOrFail.ObjectGrid
         private bool IsWithinRange(RectInt gridRect)
         {
             return gridRect.xMin >= 0 && gridRect.yMin >= 0 &&
-                   gridRect.xMax <= grid.GetLength(0) && gridRect.yMax <= grid.GetLength(1);
+                   gridRect.xMax < grid.GetLength(0) && gridRect.yMax < grid.GetLength(1);
         }
     }
 }

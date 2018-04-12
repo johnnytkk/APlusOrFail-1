@@ -2,6 +2,7 @@
 using System.Reflection;
 using UnityEngine;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 
 namespace APlusOrFail
 {
@@ -17,13 +18,14 @@ namespace APlusOrFail
 
             EditorGUILayout.BeginVertical(emptyLayoutOptions);
                 
-            foreach (PropertyInfo info in base.target.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            foreach (PropertyInfo info in target.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
                 if (Attribute.IsDefined(info, typeof(EditorPropertyFieldAttribute)) && info.CanRead && info.CanWrite)
                 {
                     Type type = info.PropertyType;
                     string nickName = ObjectNames.NicifyVariableName(info.Name);
 
+                    EditorGUI.BeginChangeCheck();
                     EditorGUILayout.BeginHorizontal(emptyLayoutOptions);
 
                     if (type == typeof(AnimationCurve))
@@ -114,6 +116,12 @@ namespace APlusOrFail
                     }
 
                     EditorGUILayout.EndHorizontal();
+                    if (EditorGUI.EndChangeCheck() && !Application.isPlaying)
+                    {
+                        Undo.RecordObject(target, $"Changed {nickName}");
+                        EditorUtility.SetDirty(target);
+                        EditorSceneManager.MarkSceneDirty(((Component)target).gameObject.scene);
+                    }
                 }
             }
 
