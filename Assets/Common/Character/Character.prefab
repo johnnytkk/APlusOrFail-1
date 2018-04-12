@@ -57,7 +57,6 @@ GameObject:
   - component: {fileID: 114297271354540238}
   - component: {fileID: 114284362472598944}
   - component: {fileID: 114985746334063676}
-  - component: {fileID: 114965143464425046}
   - component: {fileID: 114808958964086966}
   m_Layer: 10
   m_Name: Character
@@ -348,18 +347,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 110e03fb21d5bd94384cae7b28225c95, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &114965143464425046
-MonoBehaviour:
-  m_ObjectHideFlags: 1
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 100100000}
-  m_GameObject: {fileID: 1838405542405372}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 29b9ebbc82194eb43952f595e7426cf8, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _health: 16
 --- !u!114 &114985746334063676
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -373,9 +360,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxSpeed: 2
   squatMaxSpeed: 3
-  flappingForce: 3
-  jumpingForce: 400
-  minJumpInterval: 0.1
+  initialHealth: 10
   wheelJoint: {fileID: 233385898197507310}
   wheelCollider: {fileID: 58814143607895474}
 --- !u!233 &233385898197507310

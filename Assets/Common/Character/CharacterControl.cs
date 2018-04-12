@@ -1,11 +1,12 @@
-﻿using System.Collections;
+﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using UnityEngine;
 
 namespace APlusOrFail.Character
 {
     [RequireComponent(typeof(Rigidbody2D), typeof(CharacterPlayer), typeof(CharacterSprite))]
-    public class CharacterControl : MonoBehaviour
+    public class CharacterControl : PropertyFieldBehavior
     {
         private static readonly int animatorInAirHash = Animator.StringToHash("inAir");
         private static readonly int animatorSquatHash = Animator.StringToHash("squat");
@@ -16,21 +17,58 @@ namespace APlusOrFail.Character
         private static readonly int animatorJumpHash = Animator.StringToHash("jump");
         private static readonly int animatorCurrentWheelSpeedHash = Animator.StringToHash("currentWheelSpeed");
         private static readonly int animatorGravitationalVelocityHash = Animator.StringToHash("gravitationalVelocity");
-    
+        
+
+        public class HealthChange
+        {
+            public readonly int healthDelta;
+
+            public HealthChange(int healthDelta)
+            {
+                this.healthDelta = healthDelta;
+            }
+        }
+
 
         public float maxSpeed = 1.5f;
         public float squatMaxSpeed = 2f;
-        public float flappingForce = 3;
-        public float jumpingForce = 400;
-        public float minJumpInterval = 0.1f;
+        public int initialHealth;
         
-        public HingeJoint2D wheelJoint;
-        public CircleCollider2D wheelCollider;
+        [EditorPropertyField]
+        public int health { get; private set; }
+        
+        [EditorPropertyField]
+        public bool won { get; private set; }
 
+        private bool _ended;
+        [EditorPropertyField]
+        public bool ended
+        {
+            get
+            {
+                return _ended;
+            }
+            private set
+            {
+                if (_ended != value)
+                {
+                    _ended = value;
+                    onEndedChanged?.Invoke(this, value);
+                }
+            }
+        }
+        public event EventHandler<CharacterControl, bool> onEndedChanged;
+
+        public readonly ReadOnlyCollection<HealthChange> healthChanges;
+        private readonly List<HealthChange> _healthChanges = new List<HealthChange>();
+        
         private new Rigidbody2D rigidbody2D;
         private CharacterPlayer charPlayer;
         private CharacterSprite charSprite;
         private Animator charAnimator;
+
+        public HingeJoint2D wheelJoint;
+        public CircleCollider2D wheelCollider;
 
         private Animator _spriteAnimator;
         private Animator spriteAnimator
@@ -56,10 +94,18 @@ namespace APlusOrFail.Character
                 }
             }
         }
-        
+
+
+        public CharacterControl()
+        {
+            healthChanges = new ReadOnlyCollection<HealthChange>(_healthChanges);
+        }
+
 
         private void Start()
         {
+            health = initialHealth;
+
             rigidbody2D = GetComponent<Rigidbody2D>();
             charPlayer = GetComponent<CharacterPlayer>();
             charSprite = GetComponent<CharacterSprite>();
@@ -67,6 +113,8 @@ namespace APlusOrFail.Character
 
             spriteAnimator = charSprite.attachedSprite?.GetComponent<Animator>();
             charSprite.onAttachedSpriteChanged += OnAttachedSpriteChanged;
+
+            UpdateEnded();
         }
 
         private void OnDestroy()
@@ -78,6 +126,7 @@ namespace APlusOrFail.Character
         {
             spriteAnimator = attachedSprite?.GetComponent<Animator>();
         }
+
 
         private ContactPoint2D[] contactPoints = new ContactPoint2D[4];
         private void FixedUpdate()
@@ -95,8 +144,8 @@ namespace APlusOrFail.Character
 
             bool leftAction = leftInput && !rightInput;
             bool rightAction = !leftInput && rightInput;
-            bool jumpAction = jumpInput;
-            bool squatAction = squatInput;
+            bool jumpAction = jumpInput && !squatInput;
+            bool squatAction = !jumpAction && squatInput;
 
             int count;
             while ((count = wheelCollider.GetContacts(contactPoints)) == contactPoints.Length)
@@ -108,98 +157,121 @@ namespace APlusOrFail.Character
 
             if (inAir)
             {
-                if (leftAction)
+                if (health == 0)
                 {
-                    faceRight = false;
-                }
-                else if (rightAction)
-                {
-                    faceRight = true;
-                }
 
-                if (leftAction || rightAction)
-                {
-                    Vector2 flappingForce = Vector2.right * rigidbody2D.mass * Physics2D.gravity.magnitude * 0.33f * (faceRight ? 1 : -1);
-                    rigidbody2D.AddForce(flappingForce);
                 }
-            }
-            else // !inAir
-            {
-                ContactPoint2D floorCp = contactPoints.Take(count)
-                    .Aggregate((sld, p) => Mathf.Abs(p.point.x - wheelCollider.bounds.center.x) < Mathf.Abs(sld.point.x - wheelCollider.bounds.center.x) ? p : sld);
-
-                if (jumping)
+                else if (won)
                 {
-                    if (preJumping)
-                    {
-                        ApplyPreJumpingForce(floorCp);
-                    }
+
                 }
                 else
                 {
-                    Vector2 floorTangent = floorCp.normal.Rotate90DegCW();
-                    float floorAngle = Mathf.Atan2(floorTangent.y, Mathf.Abs(floorTangent.x));
-
-                    sliding = Mathf.Abs(floorAngle) > Mathf.PI / 3;
-
-                    if (sliding)
+                    if (leftAction)
                     {
-                        faceRight = floorAngle > 0;
+                        faceRight = false;
+                    }
+                    else if (rightAction)
+                    {
+                        faceRight = true;
+                    }
 
-                        if (jumpAction)
+                    if (leftAction || rightAction)
+                    {
+                        Vector2 flappingForce = Vector2.right * rigidbody2D.mass * Physics2D.gravity.magnitude * 0.33f * (faceRight ? 1 : -1);
+                        rigidbody2D.AddForce(flappingForce);
+                    }
+                }
+                
+            }
+            else // !inAir
+            {
+                if (health == 0)
+                {
+
+                }
+                else if (won)
+                {
+
+                }
+                else
+                {
+                    ContactPoint2D floorCp = contactPoints.Take(count)
+                    .Aggregate((sld, p) => Mathf.Abs(p.point.x - wheelCollider.bounds.center.x) < Mathf.Abs(sld.point.x - wheelCollider.bounds.center.x) ? p : sld);
+
+                    if (jumping)
+                    {
+                        if (preJumping)
                         {
-                            if (leftAction && floorAngle < 0 || rightAction && floorAngle > 0)
-                            {
-                                Jump(floorCp, -Mathf.PI / 2);
-                            }
-                            else if (leftAction && floorAngle > 0)
-                            {
-                                Jump(floorCp, -Mathf.PI / 4);
-                            }
-                            else if (rightAction && floorAngle < 0)
-                            {
-                                Jump(floorCp, -Mathf.PI * 3 / 4);
-                            }
-                        }
-                        else // sliding && && !jumpAction
-                        {
-                            targetWheelVelocity = maxSpeed * 0.5f * (rightAction ? 1 : (leftAction ? -1 : 0));
-                            Vector2 force = -floorCp.normal * Vector3.Cross(-floorCp.normal * rigidbody2D.mass * Physics2D.gravity.magnitude, Physics2D.gravity.normalized).magnitude;
-                            force *= leftAction && floorAngle < 0 || rightAction && floorAngle > 0 ? 3 : 1;
-                            rigidbody2D.AddForce(force);
+                            ApplyPreJumpingForce(floorCp);
                         }
                     }
-                    else // !sliding
+                    else
                     {
-                        squat = squatAction;
+                        Vector2 floorTangent = floorCp.normal.Rotate90DegCW();
+                        float floorAngle = Mathf.Atan2(floorTangent.y, Mathf.Abs(floorTangent.x));
 
-                        if (leftAction)
-                        {
-                            faceRight = false;
-                        }
-                        else if (rightAction)
-                        {
-                            faceRight = true;
-                        }
+                        sliding = Mathf.Abs(floorAngle) > Mathf.PI / 3;
 
-                        if (leftAction || rightAction)
+                        if (sliding)
                         {
-                            targetWheelVelocity = (squat ? squatMaxSpeed : maxSpeed) * (rightAction ? 1 : -1);
-                        }
+                            faceRight = floorAngle > 0;
 
-                        if (jumpAction)
+                            if (jumpAction)
+                            {
+                                if (leftAction && floorAngle < 0 || rightAction && floorAngle > 0)
+                                {
+                                    Jump(floorCp, -Mathf.PI / 2);
+                                }
+                                else if (leftAction && floorAngle > 0)
+                                {
+                                    Jump(floorCp, -Mathf.PI / 4);
+                                }
+                                else if (rightAction && floorAngle < 0)
+                                {
+                                    Jump(floorCp, -Mathf.PI * 3 / 4);
+                                }
+                            }
+                            else // sliding && && !jumpAction
+                            {
+                                targetWheelVelocity = maxSpeed * 0.5f * (rightAction ? 1 : (leftAction ? -1 : 0));
+                                Vector2 force = -floorCp.normal * Vector3.Cross(-floorCp.normal * rigidbody2D.mass * Physics2D.gravity.magnitude, Physics2D.gravity.normalized).magnitude;
+                                force *= leftAction && floorAngle < 0 || rightAction && floorAngle > 0 ? 3 : 1;
+                                rigidbody2D.AddForce(force);
+                            }
+                        }
+                        else // !sliding
                         {
+                            squat = squatAction;
+
                             if (leftAction)
                             {
-                                Jump(floorCp, -Mathf.PI * 5 / 12);
+                                faceRight = false;
                             }
                             else if (rightAction)
                             {
-                                Jump(floorCp, -Mathf.PI * 7 / 12);
+                                faceRight = true;
                             }
-                            else
+
+                            if (leftAction || rightAction)
                             {
-                                Jump(floorCp, -Mathf.PI / 2);
+                                targetWheelVelocity = (squat ? squatMaxSpeed : maxSpeed) * (rightAction ? 1 : -1);
+                            }
+
+                            if (jumpAction)
+                            {
+                                if (leftAction)
+                                {
+                                    Jump(floorCp, -Mathf.PI * 5 / 12);
+                                }
+                                else if (rightAction)
+                                {
+                                    Jump(floorCp, -Mathf.PI * 7 / 12);
+                                }
+                                else
+                                {
+                                    Jump(floorCp, -Mathf.PI / 2);
+                                }
                             }
                         }
                     }
@@ -222,7 +294,34 @@ namespace APlusOrFail.Character
         }
 
 
+        public void ChangeHealth(HealthChange healthChange)
+        {
+            if (!won)
+            {
+                int newHealth = Mathf.Max(health + healthChange.healthDelta, 0);
+                if (newHealth != health)
+                {
+                    _healthChanges.Add(new HealthChange(newHealth - health));
+                    health = newHealth;
+                    UpdateEnded();
+                }
+            }
+        }
+
+        public void Win()
+        {
+            won = true;
+            UpdateEnded();
+        }
+
+        private void UpdateEnded()
+        {
+            ended = health == 0 || won;
+        }
+
+
         private bool _inAir;
+        [EditorPropertyField(forceGet = true)]
         private bool inAir
         {
             get
@@ -240,6 +339,7 @@ namespace APlusOrFail.Character
         }
 
         private bool _squat;
+        [EditorPropertyField(forceGet = true)]
         private bool squat
         {
             get
@@ -258,6 +358,7 @@ namespace APlusOrFail.Character
         }
 
         private bool _sliding;
+        [EditorPropertyField(forceGet = true)]
         private bool sliding
         {
             get
@@ -275,6 +376,7 @@ namespace APlusOrFail.Character
         }
 
         private bool _faceRight;
+        [EditorPropertyField(forceGet = true)]
         private bool faceRight
         {
             get
@@ -292,6 +394,7 @@ namespace APlusOrFail.Character
             }
         }
 
+        [EditorPropertyField(forceGet = true)]
         private bool jumping
         {
             get { return preJumping || postJumping; }
@@ -301,6 +404,7 @@ namespace APlusOrFail.Character
         private bool postJumping;
 
         private float _jumpingAngle = float.NaN;
+        [EditorPropertyField(forceGet = true)]
         private float jumpingAngle
         {
             get
@@ -352,6 +456,7 @@ namespace APlusOrFail.Character
         }
 
         private float _targetWheelVelocity;
+        [EditorPropertyField(forceGet = true)]
         private float targetWheelVelocity
         {
             get
@@ -371,6 +476,7 @@ namespace APlusOrFail.Character
         }
 
         private float _currentWheelSpeed;
+        [EditorPropertyField(forceGet = true)]
         private float currentWheelSpeed
         {
             get
@@ -388,6 +494,7 @@ namespace APlusOrFail.Character
         }
 
         private float _gravitationalVelocity;
+        [EditorPropertyField(forceGet = true)]
         private float gravitionalVelocity
         {
             get

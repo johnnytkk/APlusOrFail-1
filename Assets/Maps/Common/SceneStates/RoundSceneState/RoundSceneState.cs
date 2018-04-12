@@ -11,52 +11,56 @@ namespace APlusOrFail.Maps.SceneStates.RoundSceneState
     {
         private class CharacterInfo
         {
-            private readonly RoundSceneState enclosing;
+            private readonly RoundSceneState outer;
             private GameObject character;
+            private CharacterPlayer characterPlayer;
+            private CharacterControl characterControl;
 
-            public CharacterInfo(RoundSceneState enclosing, Player player)
+            public CharacterInfo(RoundSceneState outer, Player player)
             {
-                this.enclosing = enclosing;
-                enclosing.characterInfos.Add(this);
+                this.outer = outer;
 
-                character = Instantiate(enclosing.characterPrefab, enclosing.characterPrefab.transform.position, Quaternion.identity);
-                character.GetComponent<CharacterPlayer>().player = player;
-                character.GetComponent<CharacterHealth>().onHealthChanged += OnCharacterHealthChanged;
+                outer.characterInfos.Add(this);
+                character = Instantiate(outer.characterPrefab, outer.spawnPoint.transform.position, Quaternion.identity);
+                characterPlayer = character.GetComponent<CharacterPlayer>();
+                characterPlayer.player = player;
+                characterControl = character.GetComponent<CharacterControl>();
+                characterControl.onEndedChanged += OnCharacterEndedChanged;
+
+                UpdateOngoingInfos(characterControl.ended);
             }
 
-            public void Update()
+            private void OnCharacterEndedChanged(CharacterControl charControl, bool ended)
             {
-
+                UpdateOngoingInfos(ended);
             }
 
-            private void OnCharacterHealthChanged(CharacterHealth charHealth, CharacterHealth.ChangeDatum health)
+            private void UpdateOngoingInfos(bool ended)
             {
-                if (enclosing.phase.IsAtLeast(SceneStatePhase.Activated))
+                if (ended)
                 {
-                    if (charHealth.health <= 0)
+                    outer.ongoingCharacterInfos.Remove(this);
+                    if (outer.ongoingCharacterInfos.Count == 0)
                     {
-                        Remove();
+                        outer.OnAllCharacterEnded();
                     }
+                }
+                else
+                {
+                    outer.ongoingCharacterInfos.Add(this);
                 }
             }
 
             public void Remove()
             {
-                CharacterPlayer charPlayer = character.GetComponent<CharacterPlayer>();
-                CharacterHealth charHealth = character.GetComponent<CharacterHealth>();
+                outer.result.Add(new PlayerStatistics(characterPlayer.player, characterControl.healthChanges, characterControl.won));
 
-                enclosing.result.Add(new PlayerStatistics(charPlayer.player, charHealth.changeData));
-
-                charPlayer.player = null;
-                charHealth.onHealthChanged -= OnCharacterHealthChanged;
-
+                characterControl.onEndedChanged -= OnCharacterEndedChanged;
+                characterPlayer.player = null;
                 Destroy(character);
 
-                enclosing.characterInfos.Remove(this);
-                if (enclosing.characterInfos.Count == 0)
-                {
-                    enclosing.OnAllCharacterDied();
-                }
+                outer.characterInfos.Remove(this);
+                outer.ongoingCharacterInfos.Remove(this);
             }
         }
 
@@ -64,12 +68,14 @@ namespace APlusOrFail.Maps.SceneStates.RoundSceneState
         public class PlayerStatistics
         {
             public readonly Player player;
-            public readonly ReadOnlyCollection<CharacterHealth.ChangeDatum> healthChangeData;
+            public readonly ReadOnlyCollection<CharacterControl.HealthChange> healthChangeData;
+            public readonly bool won;
 
-            public PlayerStatistics(Player player, IEnumerable<CharacterHealth.ChangeDatum> healthChangeData)
+            public PlayerStatistics(Player player, IEnumerable<CharacterControl.HealthChange> healthChangeData, bool won)
             {
                 this.player = player;
-                this.healthChangeData = new ReadOnlyCollection<CharacterHealth.ChangeDatum>(healthChangeData.ToList());
+                this.healthChangeData = new ReadOnlyCollection<CharacterControl.HealthChange>(healthChangeData.ToList());
+                this.won = won;
             }
         }
 
@@ -79,12 +85,9 @@ namespace APlusOrFail.Maps.SceneStates.RoundSceneState
 
         
         private readonly List<CharacterInfo> characterInfos = new List<CharacterInfo>();
+        private readonly HashSet<CharacterInfo> ongoingCharacterInfos = new HashSet<CharacterInfo>();
         private readonly List<PlayerStatistics> result = new List<PlayerStatistics>();
 
-        protected override void OnLoad(Void arg)
-        {
-            base.OnLoad(arg);
-        }
 
         protected override void OnActivate(ISceneState unloadedSceneState, object result)
         {
@@ -101,9 +104,9 @@ namespace APlusOrFail.Maps.SceneStates.RoundSceneState
         protected override void OnDeactivate()
         {
             base.OnDeactivate();
-            foreach (CharacterInfo info in characterInfos)
+            for (int i = characterInfos.Count - 1; i >= 0; --i)
             {
-                info.Remove();
+                characterInfos[i].Remove();
             }
         }
 
@@ -115,7 +118,7 @@ namespace APlusOrFail.Maps.SceneStates.RoundSceneState
             return result;
         }
 
-        private void OnAllCharacterDied()
+        private void OnAllCharacterEnded()
         {
             SceneStateManager.instance.Pop(this);
         }
