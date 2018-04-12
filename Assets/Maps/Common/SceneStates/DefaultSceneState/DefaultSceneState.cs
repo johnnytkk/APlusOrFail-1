@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using UnityEngine;
 
 namespace APlusOrFail.Maps.SceneStates.DefaultSceneState
@@ -7,7 +8,7 @@ namespace APlusOrFail.Maps.SceneStates.DefaultSceneState
     using ObjectSelectionSceneState;
     using PlaceObjectSceneState;
     using RoundSceneState;
-    using System.Collections.ObjectModel;
+    using RankSceneState;
 
     public class DefaultSceneState : SceneStateBehavior<object, object>
     {
@@ -16,6 +17,7 @@ namespace APlusOrFail.Maps.SceneStates.DefaultSceneState
         public ObjectSelectionSceneState objectSelectionUIScene;
         public PlaceObjectSceneState placeObjectUIScene;
         public RoundSceneState roundUIScene;
+        public RankSceneState rankSceneState;
 
         public GameObject test_characterSprite;
 
@@ -93,7 +95,7 @@ namespace APlusOrFail.Maps.SceneStates.DefaultSceneState
 
         private void OnRoundUISceneFinished(ReadOnlyCollection<RoundSceneState.PlayerStatistics> playerStatistics)
         {
-
+            SceneStateManager.instance.Push(rankSceneState, playerStatistics);
         }
     }
 }

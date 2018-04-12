@@ -75,7 +75,7 @@ namespace APlusOrFail.Maps.SceneStates.ObjectSelectionSceneState
                 ObjectGridPlacer gridPlacer = obj.GetComponent<ObjectGridPlacer>();
                 gridPlacer.enabled = false;
 
-                obj.transform.parent = uiScene; // Fix the scale
+                // obj.transform.parent = uiScene; // Fix the scale
                 attachedObjects.Add(obj);
 
                 obj.SetLayerRecursively(objectLayerIndex);
