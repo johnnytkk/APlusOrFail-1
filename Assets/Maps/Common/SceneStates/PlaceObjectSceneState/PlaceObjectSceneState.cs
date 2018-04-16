@@ -1,97 +1,22 @@
-﻿using System.Linq;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace APlusOrFail.Maps.SceneStates.PlaceObjectSceneState
 {
-    using KeyCursorController;
     using Objects;
-    using ObjectGrid;
-
-    [RequireComponent(typeof(KeyCursorController))]
-    public class PlaceObjectSceneState : SceneStateBehavior<IDictionary<Player, GameObject>, Void>
+    
+    public class PlaceObjectSceneState : SceneStateBehavior<MapStat, Void>
     {
-        private class ObjectCursor
-        {
-            private readonly PlaceObjectSceneState outer;
-
-            public readonly Player player;
-            public readonly KeyCursorController.KeyCursor keyCursor;
-            public readonly GameObject obj;
-            public readonly ObjectGridPlacer objectGridPlacer;
-            public readonly RectInt outerBound;
-
-            public ObjectCursor(PlaceObjectSceneState outer, Player player, GameObject prefab)
-            {
-                this.outer = outer;
-
-                this.player = player;
-                keyCursor = outer.keyCursorController.AddKeyCursor(player);
-                obj = Instantiate(prefab);
-                objectGridPlacer = obj.GetComponent<ObjectGridPlacer>();
-                outerBound = obj.GetComponentsInChildren<ObjectGridRect>().GetLocalRects().GetOuterBound();
-
-                objectGridPlacer.registerInGrid = false;
-
-                outer.objectCursors.Add(this);
-            }
-
-            public void Update()
-            {
-                RectInt rotatedOuterBound = outerBound.Rotate(objectGridPlacer.rotation);
-                Vector2Int gridOffset = new Vector2Int(-rotatedOuterBound.xMax, -rotatedOuterBound.yMin + 1);
-                Vector2Int objGridPosition = ObjectGrid.instance.WorldToGridPosition(keyCursor.location) + gridOffset;
-
-                objectGridPlacer.gridPosition = objGridPosition;
-
-                bool placable = objectGridPlacer.IsRegisterable();
-                if (placable)
-                {
-                    Debug.LogFormat($"Player {player.id} can place!");
-                }
-                else
-                {
-                    Debug.LogFormat($"Player {player.id} cannot place!");
-                }
-
-                if (placable && HasKeyUp(player, Player.Action.Select))
-                {
-                    objectGridPlacer.registerInGrid = true;
-                    Remove();
-                }
-                else if (HasKeyUp(player, Player.Action.Cancel))
-                {
-                    objectGridPlacer.rotation = (ObjectGridRects.Rotation)(((int)objectGridPlacer.rotation + 1) % 4);
-                }
-            }
-
-            private bool HasKeyUp(Player player, Player.Action action)
-            {
-                KeyCode? code = player.GetKeyForAction(action);
-                return code != null && Input.GetKeyUp(code.Value);
-            }
-
-            public void Remove()
-            {
-                keyCursor.Remove();
-                outer.objectCursors.Remove(this);
-
-                if (outer.objectCursors.Count == 0)
-                {
-                    SceneStateManager.instance.Pop(outer);
-                }
-            }
-        }
-
+        private new Camera camera;
         public RectTransform uiScene;
-
-        private KeyCursorController keyCursorController;
+        public ObjectCursor cursorPrefab;
 
         private readonly List<ObjectCursor> objectCursors = new List<ObjectCursor>();
 
+
         private void Start()
         {
-            keyCursorController = GetComponent<KeyCursorController>();
+            camera = Camera.main;
             HideUI();
         }
 
@@ -107,24 +32,18 @@ namespace APlusOrFail.Maps.SceneStates.PlaceObjectSceneState
             HideUI();
         }
 
-        private void Update()
-        {
-            if (phase.IsAtLeast(SceneStatePhase.Activated))
-            {
-                for (int i = objectCursors.Count - 1; i >= 0; --i)
-                {
-                    objectCursors[i].Update();
-                }
-            }
-        }
-
         private void ShowUI()
         {
             uiScene.gameObject.SetActive(true);
 
-            foreach (KeyValuePair<Player, GameObject> pair in arg)
+            foreach (IRoundPlayerStat roundPlayerStat in arg.GetRoundPlayerStatOfRound(arg.currentRound))
             {
-                new ObjectCursor(this, pair.Key, pair.Value);
+                ObjectCursor cursor = Instantiate(cursorPrefab, uiScene);
+                cursor.player = roundPlayerStat.playerStat.player;
+                cursor.objectPrefab = roundPlayerStat.selectedObjectPrefab;
+                cursor.camera = camera;
+                cursor.onCursorDestroyed += OnObjectCursorDestroyed;
+                objectCursors.Add(cursor);
             }
         }
 
@@ -133,7 +52,24 @@ namespace APlusOrFail.Maps.SceneStates.PlaceObjectSceneState
             uiScene.gameObject.SetActive(false);
             for (int i = objectCursors.Count - 1; i >= 0; --i)
             {
-                objectCursors[i].Remove();
+                ObjectCursor cursor = objectCursors[i];
+                RemoveObjectCursor(cursor);
+                Destroy(cursor);
+            }
+        }
+
+        private void RemoveObjectCursor(ObjectCursor cursor)
+        {
+            cursor.onCursorDestroyed -= OnObjectCursorDestroyed;
+            objectCursors.Remove(cursor);
+        }
+
+        private void OnObjectCursorDestroyed(ObjectCursor cursor)
+        {
+            RemoveObjectCursor(cursor);
+            if (objectCursors.Count == 0)
+            {
+                SceneStateManager.instance.Pop(this);
             }
         }
     }

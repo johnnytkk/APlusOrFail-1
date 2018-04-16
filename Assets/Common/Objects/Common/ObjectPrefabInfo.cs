@@ -6,6 +6,6 @@ namespace APlusOrFail.Objects
     {
         public ObjectPrefabLink prefabLink;
 
-        public GameObject prefab => prefabLink?.prefab;
+        public ObjectPrefabInfo prefab => prefabLink?.prefab;
     }
 }

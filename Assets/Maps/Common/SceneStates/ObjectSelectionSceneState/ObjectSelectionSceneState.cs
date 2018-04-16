@@ -1,58 +1,36 @@
 ﻿using System.Collections.Generic;
-using System.Collections.ObjectModel;
+using System.Linq;
 using UnityEngine;
 
 namespace APlusOrFail.Maps.SceneStates.ObjectSelectionSceneState
 {
-    using KeyCursorController;
     using Objects;
     using ObjectGrid;
     
-    [RequireComponent(typeof(KeyCursorController))]
-    public class ObjectSelectionSceneState : SceneStateBehavior<object, object>
+    public class ObjectSelectionSceneState : SceneStateBehavior<MapStat, Void>
     {
-        private static int objectLayerIndex = -1;
-
+        private new Camera camera;
         public RectTransform uiScene;
-        public List<GameObject> objectPrefabs;
+        public List<ObjectPrefabInfo> objectPrefabs;
+        public KeyCursor keyCursorPrefab;
 
-        public readonly ReadOnlyDictionary<Player, GameObject> selectedObjects;
-
-        private KeyCursorController keyCursorController;
-
-        private readonly List<GameObject> attachedObjects = new List<GameObject>();
-        private readonly List<KeyCursorController.KeyCursor> keyCursors = new List<KeyCursorController.KeyCursor>();
-        private KeyCursorController.KeyCursor[] keyCursorsForUpdate;
-        private bool keyCursorsModified;
-        private readonly Dictionary<Player, GameObject> selectedObjectsInternal = new Dictionary<Player, GameObject>();
-
-        public ObjectSelectionSceneState()
-        {
-            selectedObjects = new ReadOnlyDictionary<Player, GameObject>(selectedObjectsInternal);
-        }
-
-        private void Awake()
-        {
-            if (objectLayerIndex < 0)
-            {
-                objectLayerIndex = LayerMask.NameToLayer("Selectable Objects");
-                if (objectLayerIndex < 0)
-                {
-                    Debug.LogErrorFormat("Cannot find layer \"Selectable Objects\"");
-                }
-            }
-        }
+        private readonly List<ObjectPrefabInfo> attachedPrefabInfos = new List<ObjectPrefabInfo>();
+        private readonly List<KeyCursor> keyCursors = new List<KeyCursor>();
+        
 
         private void Start()
         {
-            keyCursorController = GetComponent<KeyCursorController>();
+            camera = Camera.main;
             HideUI();
         }
 
         protected override void OnActivate(ISceneState unloadedSceneState, object result)
         {
             base.OnActivate(unloadedSceneState, result);
-            ShowUI();
+            if (unloadedSceneState == null)
+            {
+                ShowUI();
+            }
         }
 
         protected override void OnDeactivate()
@@ -70,27 +48,27 @@ namespace APlusOrFail.Maps.SceneStates.ObjectSelectionSceneState
             {
                 // https://answers.unity.com/questions/1007585/reading-and-setting-asn-objects-global-scale-with.html
 
-                GameObject obj = Instantiate(objectPrefabs[i]);
+                ObjectPrefabInfo prefabInfo = Instantiate(objectPrefabs[i]);
 
-                ObjectGridPlacer gridPlacer = obj.GetComponent<ObjectGridPlacer>();
+                ObjectGridPlacer gridPlacer = prefabInfo.GetComponent<ObjectGridPlacer>();
                 gridPlacer.enabled = false;
 
                 // obj.transform.parent = uiScene; // Fix the scale
-                attachedObjects.Add(obj);
+                attachedPrefabInfos.Add(prefabInfo);
 
-                obj.SetLayerRecursively(objectLayerIndex);
+                prefabInfo.gameObject.SetLayerRecursively(LayerId.SelectableObjects);
 
-                RectInt objLocalGridBound = obj.GetComponentsInChildren<ObjectGridRect>().GetLocalRects().GetOuterBound();
+                RectInt objLocalGridBound = prefabInfo.GetComponentsInChildren<ObjectGridRect>().GetLocalRects().GetOuterBound();
                 Rect objLocalWorldBound = new Rect(ObjectGrid.instance.GridToWorldSize(objLocalGridBound.position), ObjectGrid.instance.GridToWorldSize(objLocalGridBound.size));
                 Vector2 center = (objLocalWorldBound.min + objLocalWorldBound.max) / 2;
 
                 float angle = Mathf.PI / 2 - angleInterval * i;
                 Vector2 position = new Vector2(2 * Mathf.Cos(angle), 2 * Mathf.Sin(angle));
                 position -= center;
-                obj.transform.position = position;
+                prefabInfo.transform.position = position;
             }
 
-            foreach (Player player in Player.players)
+            foreach (Player player in (from ps in arg.playerStatList select ps.player))
             {
                 AddKeyCursor(player);
             }
@@ -100,60 +78,52 @@ namespace APlusOrFail.Maps.SceneStates.ObjectSelectionSceneState
         {
             uiScene.gameObject.SetActive(false);
 
-            foreach (GameObject attachedObject in attachedObjects)
+            foreach (ObjectPrefabInfo attachedPrefabInfo in attachedPrefabInfos)
             {
-                Destroy(attachedObject);
+                Destroy(attachedPrefabInfo.gameObject);
             }
-            attachedObjects.Clear();
+            attachedPrefabInfos.Clear();
 
-            foreach (KeyCursorController.KeyCursor keyCursor in keyCursors)
+            for (int i = keyCursors.Count - 1; i >= 0; --i)
             {
-                keyCursor.Remove();
-                keyCursorsModified = true;
+                RemoveKeyCursor(keyCursors[i]);
             }
-            if (keyCursorsModified) keyCursors.Clear();
         }
 
         private void AddKeyCursor(Player player)
         {
-            KeyCursorController.KeyCursor keyCursor = keyCursorController.AddKeyCursor(player);
+            KeyCursor keyCursor = Instantiate(keyCursorPrefab, uiScene);
+            keyCursor.player = player;
             keyCursors.Add(keyCursor);
-            keyCursorsModified = true;
         }
 
-        private void RemoveKeyCursor(KeyCursorController.KeyCursor keyCursor)
+        private void RemoveKeyCursor(KeyCursor keyCursor)
         {
-            if (keyCursors.Remove(keyCursor))
-            {
-                keyCursor.Remove();
-                keyCursorsModified = true;
-            }
+            keyCursors.Remove(keyCursor);
+            Destroy(keyCursor.gameObject);
         }
 
         private void Update()
         {
-            if (keyCursorsModified)
+            if (phase.IsAtLeast(SceneStatePhase.Activated))
             {
-                keyCursorsForUpdate = keyCursors.Count > 0 ? keyCursors.ToArray() : null;
-                keyCursorsModified = false;
-            }
-            if (phase.IsAtLeast(SceneStatePhase.Activated) && keyCursorsForUpdate != null)
-            {
-                foreach (KeyCursorController.KeyCursor keyCursor in keyCursorsForUpdate)
+                for (int i = keyCursors.Count - 1; i >= 0; --i)
                 {
+                    KeyCursor keyCursor = keyCursors[i];
                     if (HasKeyUp(keyCursor.player, Player.Action.Select))
                     {
-                        GameObject selectedObject = Physics2D.OverlapPoint(keyCursor.location, 1 << objectLayerIndex)?.gameObject;
-                        if (selectedObject != null)
+                        ObjectPrefabInfo prefabInfo = Physics2D.OverlapPoint(camera.ViewportToWorldPoint(keyCursor.viewportLocation), 1 << LayerId.SelectableObjects)?.gameObject.GetComponentInParent<ObjectPrefabInfo>();
+                        if (prefabInfo != null)
                         {
-                            selectedObjectsInternal.Add(keyCursor.player, selectedObject.GetComponentInParent<ObjectPrefabInfo>().prefab);
+                            arg.GetRoundPlayerStat(arg.currentRound, arg.playerStatList.FindIndex(ps => ps.player ==  keyCursor.player))
+                                .selectedObjectPrefab = prefabInfo.prefab;
 
                             RemoveKeyCursor(keyCursor);
 
-                            Destroy(selectedObject);
-                            attachedObjects.Remove(selectedObject);
+                            Destroy(prefabInfo.gameObject);
+                            attachedPrefabInfos.Remove(prefabInfo);
 
-                            if (keyCursors.Count == 0 || attachedObjects.Count == 0)
+                            if (keyCursors.Count == 0 || attachedPrefabInfos.Count == 0)
                             {
                                 SceneStateManager.instance.Pop(this);
                             }

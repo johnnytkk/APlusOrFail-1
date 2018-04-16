@@ -1,30 +1,26 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using UnityEngine;
 
 namespace APlusOrFail.Maps.SceneStates.DefaultSceneState
 {
+    using Objects;
     using ObjectSelectionSceneState;
     using PlaceObjectSceneState;
     using RoundSceneState;
     using RankSceneState;
 
-    public class DefaultSceneState : SceneStateBehavior<object, object>
+    public class DefaultSceneState : SceneStateBehavior<Void, Void>
     {
-        
 
         public ObjectSelectionSceneState objectSelectionUIScene;
         public PlaceObjectSceneState placeObjectUIScene;
         public RoundSceneState roundUIScene;
         public RankSceneState rankSceneState;
-
         public GameObject test_characterSprite;
+        
+        private MapStat mapStat;
 
-        private ObjectSelectionSceneState activeObjectSelectionUIScene;
-        private PlaceObjectSceneState activePlaceObjectUIScene;
-
-        private int currentRound;
 
         private void Awake()
         {
@@ -41,21 +37,23 @@ namespace APlusOrFail.Maps.SceneStates.DefaultSceneState
             Type unloadedType = unloadedSceneState?.GetType();
             if (unloadedSceneState == null)
             {
-                StartRound();
+                OnMapStart();
             }
-            else if (activeObjectSelectionUIScene != null)
+            else if (unloadedType == typeof(ObjectSelectionSceneState))
             {
-                OnObjectSelectionUISceneFinished(activeObjectSelectionUIScene);
-                activeObjectSelectionUIScene = null;
+                OnObjectSelectionFinished();
             }
-            else if (activePlaceObjectUIScene != null)
+            else if (unloadedType == typeof(PlaceObjectSceneState))
             {
-                OnPlaceObjectUISceneFinished(activePlaceObjectUIScene);
-                activePlaceObjectUIScene = null;
+                OnPlaceObjectFinished();
             }
             else if (unloadedType == typeof(RoundSceneState))
             {
-                OnRoundUISceneFinished((ReadOnlyCollection<RoundSceneState.PlayerStatistics>)result);
+                OnRoundUISceneFinished();
+            }
+            else if (unloadedType == typeof(RankSceneState))
+            {
+                OnRankFinished();
             }
         }
 
@@ -73,29 +71,62 @@ namespace APlusOrFail.Maps.SceneStates.DefaultSceneState
             player.MapActionToKey(Player.Action.Down, KeyCode.DownArrow);
             player.MapActionToKey(Player.Action.Select, KeyCode.Home);
             player.MapActionToKey(Player.Action.Cancel, KeyCode.End);
+
+            Player player2 = new Player
+            {
+                characterSprite = test_characterSprite,
+                name = "Leung",
+                color = Color.red
+            };
+            player2.MapActionToKey(Player.Action.Left, KeyCode.A);
+            player2.MapActionToKey(Player.Action.Right, KeyCode.D);
+            player2.MapActionToKey(Player.Action.Up, KeyCode.W);
+            player2.MapActionToKey(Player.Action.Down, KeyCode.S);
+            player2.MapActionToKey(Player.Action.Select, KeyCode.Q);
+            player2.MapActionToKey(Player.Action.Cancel, KeyCode.E);
         }
 
-        private void StartRound()
+
+        private void OnMapStart()
         {
-            ++currentRound;
-            activeObjectSelectionUIScene = objectSelectionUIScene;
-            SceneStateManager.instance.Push(objectSelectionUIScene, null);
+            IMapSetting mapSetting = GameObject.Find("MapSetting")?.GetComponent<IMapSetting>();
+            if (mapSetting != null)
+            {
+                mapStat = new MapStat(mapSetting);
+                OnRankFinished();
+            }
+            else
+            {
+                Debug.LogErrorFormat("Cannot find map setting!");
+            }
         }
 
-        private void OnObjectSelectionUISceneFinished(ObjectSelectionSceneState objectSelectionUIScene)
+        private void OnObjectSelectionFinished()
         {
-            SceneStateManager.instance.Push(placeObjectUIScene, new Dictionary<Player, GameObject>(objectSelectionUIScene.selectedObjects));
-            activePlaceObjectUIScene = placeObjectUIScene;
+            SceneStateManager.instance.Push(placeObjectUIScene, mapStat);
         }
 
-        private void OnPlaceObjectUISceneFinished(PlaceObjectSceneState placeObjectUIScene)
+        private void OnPlaceObjectFinished()
         {
-            SceneStateManager.instance.Push(roundUIScene, null);
+            SceneStateManager.instance.Push(roundUIScene, mapStat);
         }
 
-        private void OnRoundUISceneFinished(ReadOnlyCollection<RoundSceneState.PlayerStatistics> playerStatistics)
+        private void OnRoundUISceneFinished()
         {
-            SceneStateManager.instance.Push(rankSceneState, playerStatistics);
+            SceneStateManager.instance.Push(rankSceneState, mapStat);
+        }
+
+        private void OnRankFinished()
+        {
+            if ((mapStat.currentRound + 1) < mapStat.roundCount)
+            {
+                ++mapStat.currentRound;
+                SceneStateManager.instance.Push(objectSelectionUIScene, mapStat);
+            }
+            else
+            {
+                print("Round Finished!");
+            }
         }
     }
 }

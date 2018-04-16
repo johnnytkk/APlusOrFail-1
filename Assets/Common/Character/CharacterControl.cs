@@ -19,13 +19,23 @@ namespace APlusOrFail.Character
         private static readonly int animatorGravitationalVelocityHash = Animator.StringToHash("gravitationalVelocity");
         
 
-        public class HealthChange
+        public class HealthChange : IPlayerHealthChange
         {
-            public readonly int healthDelta;
+            public int healthDelta { get; private set; }
 
             public HealthChange(int healthDelta)
             {
                 this.healthDelta = healthDelta;
+            }
+        }
+
+        public class ScoreChange : IPlayerScoreChange
+        {
+            public int scoreDelta { get; private set; }
+
+            public ScoreChange(int scoreDelta)
+            {
+                this.scoreDelta = scoreDelta;
             }
         }
 
@@ -59,9 +69,13 @@ namespace APlusOrFail.Character
         }
         public event EventHandler<CharacterControl, bool> onEndedChanged;
 
-        public readonly ReadOnlyCollection<HealthChange> healthChanges;
-        private readonly List<HealthChange> _healthChanges = new List<HealthChange>();
+        public readonly ReadOnlyCollection<IPlayerHealthChange> healthChanges;
+        private readonly List<IPlayerHealthChange> _healthChanges = new List<IPlayerHealthChange>();
+
+        public readonly ReadOnlyCollection<IPlayerScoreChange> scoreChanges;
+        private readonly List<IPlayerScoreChange> _scoreChanges = new List<IPlayerScoreChange>();
         
+
         private new Rigidbody2D rigidbody2D;
         private CharacterPlayer charPlayer;
         private CharacterSprite charSprite;
@@ -98,7 +112,8 @@ namespace APlusOrFail.Character
 
         public CharacterControl()
         {
-            healthChanges = new ReadOnlyCollection<HealthChange>(_healthChanges);
+            healthChanges = new ReadOnlyCollection<IPlayerHealthChange>(_healthChanges);
+            scoreChanges = new ReadOnlyCollection<IPlayerScoreChange>(_scoreChanges);
         }
 
 
@@ -294,7 +309,7 @@ namespace APlusOrFail.Character
         }
 
 
-        public void ChangeHealth(HealthChange healthChange)
+        public void ChangeHealth(IPlayerHealthChange healthChange)
         {
             if (!won)
             {
@@ -306,6 +321,11 @@ namespace APlusOrFail.Character
                     UpdateEnded();
                 }
             }
+        }
+
+        public void ChangeScore(IPlayerScoreChange scoreChange)
+        {
+            _scoreChanges.Add(scoreChange);
         }
 
         public void Win()

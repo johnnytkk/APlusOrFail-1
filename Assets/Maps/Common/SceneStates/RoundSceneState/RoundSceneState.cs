@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using UnityEngine;
 
@@ -7,96 +6,41 @@ namespace APlusOrFail.Maps.SceneStates.RoundSceneState
 {
     using Character;
 
-    public class RoundSceneState : SceneStateBehavior<Void, ReadOnlyCollection<RoundSceneState.PlayerStatistics>>
+    public class RoundSceneState : SceneStateBehavior<MapStat, Void>
     {
-        private class CharacterInfo
-        {
-            private readonly RoundSceneState outer;
-            private GameObject character;
-            private CharacterPlayer characterPlayer;
-            private CharacterControl characterControl;
-
-            public CharacterInfo(RoundSceneState outer, Player player)
-            {
-                this.outer = outer;
-
-                outer.characterInfos.Add(this);
-                character = Instantiate(outer.characterPrefab, outer.spawnPoint.transform.position, Quaternion.identity);
-                characterPlayer = character.GetComponent<CharacterPlayer>();
-                characterPlayer.player = player;
-                characterControl = character.GetComponent<CharacterControl>();
-                characterControl.onEndedChanged += OnCharacterEndedChanged;
-
-                UpdateOngoingInfos(characterControl.ended);
-            }
-
-            private void OnCharacterEndedChanged(CharacterControl charControl, bool ended)
-            {
-                UpdateOngoingInfos(ended);
-            }
-
-            private void UpdateOngoingInfos(bool ended)
-            {
-                if (ended)
-                {
-                    outer.ongoingCharacterInfos.Remove(this);
-                    if (outer.ongoingCharacterInfos.Count == 0)
-                    {
-                        outer.OnAllCharacterEnded();
-                    }
-                }
-                else
-                {
-                    outer.ongoingCharacterInfos.Add(this);
-                }
-            }
-
-            public void Remove()
-            {
-                outer.result.Add(new PlayerStatistics(characterPlayer.player, characterControl.healthChanges, characterControl.won));
-
-                characterControl.onEndedChanged -= OnCharacterEndedChanged;
-                characterPlayer.player = null;
-                Destroy(character);
-
-                outer.characterInfos.Remove(this);
-                outer.ongoingCharacterInfos.Remove(this);
-            }
-        }
-
-
-        public class PlayerStatistics
-        {
-            public readonly Player player;
-            public readonly ReadOnlyCollection<CharacterControl.HealthChange> healthChangeData;
-            public readonly bool won;
-
-            public PlayerStatistics(Player player, IEnumerable<CharacterControl.HealthChange> healthChangeData, bool won)
-            {
-                this.player = player;
-                this.healthChangeData = new ReadOnlyCollection<CharacterControl.HealthChange>(healthChangeData.ToList());
-                this.won = won;
-            }
-        }
-
-
-        public GameObject characterPrefab;
+        public CharacterControl characterPrefab;
         public Transform spawnPoint;
-
         
-        private readonly List<CharacterInfo> characterInfos = new List<CharacterInfo>();
-        private readonly HashSet<CharacterInfo> ongoingCharacterInfos = new HashSet<CharacterInfo>();
-        private readonly List<PlayerStatistics> result = new List<PlayerStatistics>();
+        private readonly HashSet<CharacterControl> notEndedCharControls = new HashSet<CharacterControl>();
+        private readonly HashSet<CharacterControl> endedCharControls = new HashSet<CharacterControl>();
 
 
         protected override void OnActivate(ISceneState unloadedSceneState, object result)
         {
             base.OnActivate(unloadedSceneState, result);
+
             if (unloadedSceneState == null)
             {
-                foreach (Player player in Player.players)
+                foreach (Player player in (from ps in arg.playerStatList select ps.player))
                 {
-                    new CharacterInfo(this, player);
+                    CharacterControl charControl = Instantiate(characterPrefab, spawnPoint.position, characterPrefab.transform.rotation);
+                    CharacterPlayer charPlayer = charControl.GetComponent<CharacterPlayer>();
+
+                    charControl.onEndedChanged += OnCharEnded;
+                    charPlayer.player = player;
+
+                    if (charControl.ended)
+                    {
+                        endedCharControls.Add(charControl);
+                    }
+                    else
+                    {
+                        notEndedCharControls.Add(charControl);
+                    }
+                }
+                if (notEndedCharControls.Count == 0)
+                {
+                    OnAllCharacterEnded();
                 }
             }
         }
@@ -104,18 +48,44 @@ namespace APlusOrFail.Maps.SceneStates.RoundSceneState
         protected override void OnDeactivate()
         {
             base.OnDeactivate();
-            for (int i = characterInfos.Count - 1; i >= 0; --i)
+            
+            foreach (CharacterControl charControl in notEndedCharControls.Concat(endedCharControls))
             {
-                characterInfos[i].Remove();
+                Player player = charControl.GetComponent<CharacterPlayer>().player;
+                RoundPlayerStat roundPlayerStat = arg.GetRoundPlayerStat(arg.currentRound, arg.playerStatList.FindIndex(ps => ps.player == player));
+
+                if (charControl.won)
+                {
+                    charControl.ChangeScore(new CharacterControl.ScoreChange(30));
+                }
+
+                roundPlayerStat.healthChangeList.AddRange(charControl.healthChanges);
+                roundPlayerStat.scoreChangeList.AddRange(charControl.scoreChanges);
+
+                charControl.onEndedChanged -= OnCharEnded;
+                Destroy(charControl.gameObject);
             }
+            notEndedCharControls.Clear();
+            endedCharControls.Clear();
         }
 
-        protected override ReadOnlyCollection<PlayerStatistics> OnUnload()
+        private void OnCharEnded(CharacterControl charControl, bool ended)
         {
-            base.OnUnload();
-            var result = new ReadOnlyCollection<PlayerStatistics>(this.result.ToList());
-            this.result.Clear();
-            return result;
+            if (ended)
+            {
+                endedCharControls.Add(charControl);
+                notEndedCharControls.Remove(charControl);
+            }
+            else
+            {
+                endedCharControls.Remove(charControl);
+                notEndedCharControls.Add(charControl);
+            }
+
+            if (notEndedCharControls.Count == 0)
+            {
+                OnAllCharacterEnded();
+            }
         }
 
         private void OnAllCharacterEnded()
