@@ -1,124 +1,42 @@
 ﻿using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
 using UnityEngine;
 
 namespace APlusOrFail.Objects
 {
     using ObjectGrid;
 
-    public class ObjectGridPlacer : PropertyFieldBehavior
+    public class ObjectGridPlacer : MonoBehaviour
     {
-        [SerializeField, HideInInspector]
-        private Vector2Int _gridPosition;
-        [EditorPropertyField]
-        public Vector2Int gridPosition
-        {
-            get
-            {
-                return _gridPosition;
-            }
-            set
-            {
-                if (_gridPosition != value)
-                {
-                    _gridPosition = value;
-                    if (Application.isPlaying)
-                    {
-                        if (started && enabled) ApplyProperties();
-                    }
-                    else ApplyPropertiesEditorMode();
-                    
-                }
-            }
-        }
+        [SerializeField] private Vector2Int _gridPosition;
+        public Vector2Int gridPosition { get { return _gridPosition; } set { SetProperty(ref _gridPosition, value); } }
 
-        [SerializeField, HideInInspector]
-        private ObjectGridRects.Rotation _rotation;
-        [EditorPropertyField]
-        public ObjectGridRects.Rotation rotation
-        {
-            get
-            {
-                return _rotation;
-            }
-            set
-            {
-                if (_rotation != value)
-                {
-                    _rotation = value;
-                    if (Application.isPlaying)
-                    {
-                        if (started && enabled) ApplyProperties();
-                    }  
-                    else ApplyPropertiesEditorMode();
-                }
-            }
-        }
+        [SerializeField] private ObjectGridRects.Rotation _rotation;
+        public ObjectGridRects.Rotation rotation { get { return _rotation; } set { SetProperty(ref _rotation, value); } }
 
-        [SerializeField, HideInInspector]
-        private bool _registerInGrid;
-        [EditorPropertyField]
-        public bool registerInGrid
-        {
-            get
-            {
-                return _registerInGrid;
-            }
-            set
-            {
-                if (_registerInGrid != value)
-                {
-                    _registerInGrid = value;
-                    if (started && enabled) ApplyProperties();
-                }
-            }
-        }
+        [SerializeField] private bool _registerInGrid;
+        public bool registerInGrid { get { return _registerInGrid; } set { SetProperty(ref _registerInGrid, value); } }
 
-
-        public ReadOnlyCollection<ObjectGridRect> objectGridRects { get; private set; }
-
-        public IEnumerable<RectInt> worldGridRects => objectGridRects.GetLocalRects().Rotate(rotation).Move(gridPosition);
 
         private bool started;
         private bool registeredInGrid;
+        private readonly List<ObjectGridRect> objectGridRects = new List<ObjectGridRect>();
+        private IEnumerable<RectInt> worldGridRects => objectGridRects.GetLocalRects().Rotate(rotation).Move(gridPosition);
+
 
         private void Start()
         {
             started = true;
-            objectGridRects = new ReadOnlyCollection<ObjectGridRect>(GetComponentsInChildren<ObjectGridRect>().ToList());
-            ApplyProperties();
+            UpdateProperties();
         }
 
         private void OnEnable()
         {
-            if (started) ApplyProperties();
+            UpdateProperties();
         }
 
-        public void ApplyProperties()
+        private void OnValidate()
         {
-            if (started && enabled)
-            {
-                if (registeredInGrid)
-                {
-                    ObjectGrid.instance.Remove(gameObject);
-                    registeredInGrid = false;
-                }
-                if (registerInGrid)
-                {
-                    ObjectGrid.instance.Add(worldGridRects, gameObject);
-                    registeredInGrid = true;
-                }
-                transform.position = ObjectGrid.instance.GridToWorldPosition(gridPosition);
-                transform.rotation = Quaternion.Euler(0, 0, 90 * (byte)rotation);
-            }
-        }
-        
-        private void ApplyPropertiesEditorMode()
-        {
-            ObjectGrid objectGrid = FindObjectOfType<ObjectGrid>();
-            transform.position = objectGrid.GridToWorldPosition(gridPosition);
-            transform.rotation = Quaternion.Euler(0, 0, 90 * (byte)rotation);
+            UpdateProperties();
         }
 
         private void OnDestroy()
@@ -130,9 +48,49 @@ namespace APlusOrFail.Objects
             }
         }
 
-        public bool IsRegisterable()
+        private void SetProperty<T>(ref T property, T value)
         {
-            return started && ObjectGrid.instance.IsPlaceable(worldGridRects);
+            if (!property.Equals(value))
+            {
+                property = value;
+                UpdateProperties();
+            }
         }
+
+        public void UpdateProperties()
+        {
+            if (Application.isPlaying)
+            {
+                if (started && enabled)
+                {
+                    if (registeredInGrid)
+                    {
+                        ObjectGrid.instance.Remove(gameObject);
+                        registeredInGrid = false;
+                    }
+
+                    GetComponentsInChildren(true, objectGridRects);
+                    if (registerInGrid)
+                    {
+                        ObjectGrid.instance.Add(worldGridRects, gameObject);
+                        registeredInGrid = true;
+                    }
+                    transform.position = ObjectGrid.instance.GridToWorldPosition(gridPosition);
+                    transform.rotation = Quaternion.Euler(0, 0, 90 * (byte)rotation);
+                }
+            }
+            else
+            {
+                ObjectGrid objectGrid = FindObjectOfType<ObjectGrid>();
+                if (objectGrid != null)
+                {
+                    GetComponentsInChildren(true, objectGridRects);
+                    transform.position = objectGrid.GridToWorldPosition(gridPosition);
+                    transform.rotation = Quaternion.Euler(0, 0, 90 * (byte)rotation);
+                }
+            }
+        }
+
+        public bool IsRegisterable() => started && enabled && ObjectGrid.instance?.IsPlaceable(worldGridRects) == true;
     }
 }

@@ -5,7 +5,7 @@ namespace APlusOrFail.Maps.SceneStates.PlaceObjectSceneState
 {
     using Objects;
     
-    public class PlaceObjectSceneState : SceneStateBehavior<MapStat, Void>
+    public class PlaceObjectSceneState : SceneStateBehavior<IMapStat, Void>
     {
         private new Camera camera;
         public RectTransform uiScene;
@@ -38,12 +38,19 @@ namespace APlusOrFail.Maps.SceneStates.PlaceObjectSceneState
 
             foreach (IRoundPlayerStat roundPlayerStat in arg.GetRoundPlayerStatOfRound(arg.currentRound))
             {
-                ObjectCursor cursor = Instantiate(cursorPrefab, uiScene);
-                cursor.player = roundPlayerStat.playerStat.player;
-                cursor.objectPrefab = roundPlayerStat.selectedObjectPrefab;
-                cursor.camera = camera;
-                cursor.onCursorDestroyed += OnObjectCursorDestroyed;
-                objectCursors.Add(cursor);
+                if (roundPlayerStat.selectedObjectPrefab != null)
+                {
+                    ObjectCursor cursor = Instantiate(cursorPrefab, uiScene);
+                    cursor.player = roundPlayerStat.playerStat.player;
+                    cursor.objectPrefab = roundPlayerStat.selectedObjectPrefab;
+                    cursor.camera = camera;
+                    cursor.onCursorDestroyed += OnObjectCursorDestroyed;
+                    objectCursors.Add(cursor);
+                }
+            }
+            if (objectCursors.Count == 0)
+            {
+                SceneStateManager.instance.Pop(this);
             }
         }
 

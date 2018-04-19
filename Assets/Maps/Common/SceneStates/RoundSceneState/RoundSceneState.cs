@@ -5,11 +5,12 @@ using UnityEngine;
 namespace APlusOrFail.Maps.SceneStates.RoundSceneState
 {
     using Character;
+    using Objects;
+    using ObjectGrid;
 
-    public class RoundSceneState : SceneStateBehavior<MapStat, Void>
+    public class RoundSceneState : SceneStateBehavior<IMapStat, Void>
     {
         public CharacterControl characterPrefab;
-        public Transform spawnPoint;
         
         private readonly HashSet<CharacterControl> notEndedCharControls = new HashSet<CharacterControl>();
         private readonly HashSet<CharacterControl> endedCharControls = new HashSet<CharacterControl>();
@@ -21,9 +22,16 @@ namespace APlusOrFail.Maps.SceneStates.RoundSceneState
 
             if (unloadedSceneState == null)
             {
-                foreach (Player player in (from ps in arg.playerStatList select ps.player))
+                ObjectGridPlacer spawnArea = arg.roundSettings[arg.currentRound].spawnArea;
+                Rect bound = ObjectGrid.instance.GridToWorldRect(spawnArea.GetComponentsInChildren<ObjectGridRect>()
+                    .GetLocalRects()
+                    .Rotate(spawnArea.rotation)
+                    .Move(spawnArea.gridPosition)
+                    .GetInnerBound());
+
+                foreach (Player player in (from ps in arg.playerStats select ps.player))
                 {
-                    CharacterControl charControl = Instantiate(characterPrefab, spawnPoint.position, characterPrefab.transform.rotation);
+                    CharacterControl charControl = Instantiate(characterPrefab, bound.center, characterPrefab.transform.rotation);
                     CharacterPlayer charPlayer = charControl.GetComponent<CharacterPlayer>();
 
                     charControl.onEndedChanged += OnCharEnded;
@@ -52,15 +60,15 @@ namespace APlusOrFail.Maps.SceneStates.RoundSceneState
             foreach (CharacterControl charControl in notEndedCharControls.Concat(endedCharControls))
             {
                 Player player = charControl.GetComponent<CharacterPlayer>().player;
-                RoundPlayerStat roundPlayerStat = arg.GetRoundPlayerStat(arg.currentRound, arg.playerStatList.FindIndex(ps => ps.player == player));
+                IRoundPlayerStat roundPlayerStat = arg.GetRoundPlayerStat(arg.currentRound, arg.playerStats.FindIndex(ps => ps.player == player));
 
                 if (charControl.won)
                 {
                     charControl.ChangeScore(new CharacterControl.ScoreChange(30));
                 }
 
-                roundPlayerStat.healthChangeList.AddRange(charControl.healthChanges);
-                roundPlayerStat.scoreChangeList.AddRange(charControl.scoreChanges);
+                roundPlayerStat.healthChanges.AddRange(charControl.healthChanges);
+                roundPlayerStat.scoreChanges.AddRange(charControl.scoreChanges);
 
                 charControl.onEndedChanged -= OnCharEnded;
                 Destroy(charControl.gameObject);

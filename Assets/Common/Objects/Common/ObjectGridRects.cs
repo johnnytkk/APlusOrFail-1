@@ -37,7 +37,7 @@ namespace APlusOrFail.Objects
         public static RectInt Move(this RectInt rect, Vector2Int offset) => new RectInt(rect.position + offset, rect.size);
 
 
-        public static RectInt GetInnerBound(this IEnumerable<RectInt> rects) => rects.Aggregate(new RectInt(), (bound, rect) =>
+        public static RectInt GetInnerBound(this IEnumerable<RectInt> rects) => rects.DefaultIfEmpty().Aggregate((bound, rect) =>
         {
             RectInt newBound = new RectInt
             {

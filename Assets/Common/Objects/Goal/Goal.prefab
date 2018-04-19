@@ -23,7 +23,7 @@ GameObject:
   - component: {fileID: 61109881219491560}
   - component: {fileID: 114311541072469748}
   - component: {fileID: 114780856743701324}
-  m_Layer: 0
+  m_Layer: 11
   m_Name: Goal_Flag
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -40,7 +40,7 @@ GameObject:
   - component: {fileID: 4913727249728560}
   - component: {fileID: 114412846348281394}
   - component: {fileID: 114973465544954540}
-  m_Layer: 0
+  m_Layer: 11
   m_Name: Goal
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -67,7 +67,7 @@ Transform:
   m_PrefabInternal: {fileID: 100100000}
   m_GameObject: {fileID: 1748484835641516}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: -25, y: -25, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 4468545907124892}
@@ -110,7 +110,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ebfcef155a8e32e4ead7b7783c602603, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gridLocalRect:
+  _gridLocalRect:
     x: 0
     y: 0
     width: 1

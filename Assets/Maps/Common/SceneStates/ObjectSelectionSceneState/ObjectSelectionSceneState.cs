@@ -7,11 +7,10 @@ namespace APlusOrFail.Maps.SceneStates.ObjectSelectionSceneState
     using Objects;
     using ObjectGrid;
     
-    public class ObjectSelectionSceneState : SceneStateBehavior<MapStat, Void>
+    public class ObjectSelectionSceneState : SceneStateBehavior<IMapStat, Void>
     {
         private new Camera camera;
         public RectTransform uiScene;
-        public List<ObjectPrefabInfo> objectPrefabs;
         public KeyCursor keyCursorPrefab;
 
         private readonly List<ObjectPrefabInfo> attachedPrefabInfos = new List<ObjectPrefabInfo>();
@@ -43,12 +42,14 @@ namespace APlusOrFail.Maps.SceneStates.ObjectSelectionSceneState
         {
             uiScene.gameObject.SetActive(true);
 
-            float angleInterval = 2 * Mathf.PI / objectPrefabs.Count;
-            for (int i = 0; i < objectPrefabs.Count; ++i)
+            IReadOnlyList<ObjectPrefabInfo> usableObjects = arg.roundSettings[arg.currentRound].usableObjects;
+
+            float angleInterval = 2 * Mathf.PI / usableObjects.Count;
+            for (int i = 0; i < usableObjects.Count; ++i)
             {
                 // https://answers.unity.com/questions/1007585/reading-and-setting-asn-objects-global-scale-with.html
 
-                ObjectPrefabInfo prefabInfo = Instantiate(objectPrefabs[i]);
+                ObjectPrefabInfo prefabInfo = Instantiate(usableObjects[i]);
 
                 ObjectGridPlacer gridPlacer = prefabInfo.GetComponent<ObjectGridPlacer>();
                 gridPlacer.enabled = false;
@@ -68,7 +69,7 @@ namespace APlusOrFail.Maps.SceneStates.ObjectSelectionSceneState
                 prefabInfo.transform.position = position;
             }
 
-            foreach (Player player in (from ps in arg.playerStatList select ps.player))
+            foreach (Player player in (from ps in arg.playerStats select ps.player))
             {
                 AddKeyCursor(player);
             }
@@ -110,12 +111,12 @@ namespace APlusOrFail.Maps.SceneStates.ObjectSelectionSceneState
                 for (int i = keyCursors.Count - 1; i >= 0; --i)
                 {
                     KeyCursor keyCursor = keyCursors[i];
-                    if (HasKeyUp(keyCursor.player, Player.Action.Select))
+                    if (HasKeyUp(keyCursor.player, Player.Action.Action1))
                     {
                         ObjectPrefabInfo prefabInfo = Physics2D.OverlapPoint(camera.ViewportToWorldPoint(keyCursor.viewportLocation), 1 << LayerId.SelectableObjects)?.gameObject.GetComponentInParent<ObjectPrefabInfo>();
                         if (prefabInfo != null)
                         {
-                            arg.GetRoundPlayerStat(arg.currentRound, arg.playerStatList.FindIndex(ps => ps.player ==  keyCursor.player))
+                            arg.GetRoundPlayerStat(arg.currentRound, arg.playerStats.FindIndex(ps => ps.player ==  keyCursor.player))
                                 .selectedObjectPrefab = prefabInfo.prefab;
 
                             RemoveKeyCursor(keyCursor);

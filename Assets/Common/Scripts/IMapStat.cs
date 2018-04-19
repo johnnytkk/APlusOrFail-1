@@ -5,45 +5,82 @@ namespace APlusOrFail
 {
     using Objects;
 
-    public interface IMapStat : IMapSetting
+    public interface IReadOnlyMapStat : IMapSetting
     {
-        IReadOnlyList<IRoundStat> roundStats { get; }
+        IReadOnlyList<IReadonlyRoundStat> roundStats { get; }
         int roundCount { get; }
 
-        IReadOnlyList<IPlayerStat> playerStats { get; }
+        IReadOnlyList<IReadOnlyPlayerStat> playerStats { get; }
         int playerCount { get; }
 
-        IRoundPlayerStat GetRoundPlayerStat(int roundOrder, int playerOrder);
+        IReadOnlyRoundPlayerStat GetRoundPlayerStat(int roundOrder, int playerOrder);
 
         int currentRound { get; }
     }
 
-    public interface IRoundStat : IRoundSetting
+    public interface IMapStat : IReadOnlyMapStat
     {
-        IMapStat mapStat { get; }
+        new IReadOnlyList<IRoundStat> roundStats { get; }
+
+        new IReadOnlyList<IPlayerStat> playerStats { get; }
+
+        new IRoundPlayerStat GetRoundPlayerStat(int roundOrder, int playerOrder);
+
+        new int currentRound { get; set; }
+    }
+
+
+    public interface IReadonlyRoundStat : IRoundSetting
+    {
+        IReadOnlyMapStat mapStat { get; }
 
         int order { get; }
     }
 
-    public interface IPlayerStat
+    public interface IRoundStat : IReadonlyRoundStat
     {
-        IMapStat mapStat { get; }
+        new IMapStat mapStat { get; }
+    }
+
+
+    public interface IReadOnlyPlayerStat
+    {
+        IReadOnlyMapStat mapStat { get; }
 
         int order { get; }
         Player player { get; }
     }
 
-    public interface IRoundPlayerStat
+    public interface IPlayerStat : IReadOnlyPlayerStat
     {
-        IMapStat mapStat { get; }
-        IRoundStat roundStat { get; }
-        IPlayerStat playerStat { get; }
+        new IMapStat mapStat { get; }
+    }
+
+
+    public interface IReadOnlyRoundPlayerStat
+    {
+        IReadOnlyMapStat mapStat { get; }
+        IReadonlyRoundStat roundStat { get; }
+        IReadOnlyPlayerStat playerStat { get; }
 
         ObjectPrefabInfo selectedObjectPrefab { get; }
         bool won { get; }
         IReadOnlyList<IPlayerHealthChange> healthChanges { get; }
         IReadOnlyList<IPlayerScoreChange> scoreChanges { get; }
     }
+
+    public interface IRoundPlayerStat : IReadOnlyRoundPlayerStat
+    {
+        new IMapStat mapStat { get; }
+        new IRoundStat roundStat { get; }
+        new IPlayerStat playerStat { get; }
+
+        new ObjectPrefabInfo selectedObjectPrefab { get; set; }
+        new bool won { get; set; }
+        new IList<IPlayerHealthChange> healthChanges { get; }
+        new IList<IPlayerScoreChange> scoreChanges { get; }
+    }
+
 
     public interface IPlayerHealthChange
     {
@@ -54,6 +91,7 @@ namespace APlusOrFail
     {
         int scoreDelta { get; }
     }
+
 
     public static class MapStatExtensions
     {

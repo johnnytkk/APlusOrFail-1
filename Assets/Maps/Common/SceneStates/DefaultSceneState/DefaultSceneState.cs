@@ -4,31 +4,18 @@ using UnityEngine;
 
 namespace APlusOrFail.Maps.SceneStates.DefaultSceneState
 {
-    using Objects;
     using ObjectSelectionSceneState;
     using PlaceObjectSceneState;
     using RoundSceneState;
     using RankSceneState;
 
-    public class DefaultSceneState : SceneStateBehavior<Void, Void>
+    public class DefaultSceneState : SceneStateBehavior<IMapStat, Void>
     {
-
         public ObjectSelectionSceneState objectSelectionUIScene;
         public PlaceObjectSceneState placeObjectUIScene;
         public RoundSceneState roundUIScene;
         public RankSceneState rankSceneState;
-        public GameObject test_characterSprite;
         
-        private MapStat mapStat;
-
-
-        private void Awake()
-        {
-            if (Player.players.Count == 0)
-            {
-                _InsertTestData();
-            }
-        }
 
         protected override void OnActivate(ISceneState unloadedSceneState, object result)
         {
@@ -57,71 +44,32 @@ namespace APlusOrFail.Maps.SceneStates.DefaultSceneState
             }
         }
 
-        private void _InsertTestData()
-        {
-            Player player = new Player
-            {
-                characterSprite = test_characterSprite,
-                name = "Trim",
-                color = Color.blue
-            };
-            player.MapActionToKey(Player.Action.Left, KeyCode.LeftArrow);
-            player.MapActionToKey(Player.Action.Right, KeyCode.RightArrow);
-            player.MapActionToKey(Player.Action.Up, KeyCode.UpArrow);
-            player.MapActionToKey(Player.Action.Down, KeyCode.DownArrow);
-            player.MapActionToKey(Player.Action.Select, KeyCode.Home);
-            player.MapActionToKey(Player.Action.Cancel, KeyCode.End);
-
-            Player player2 = new Player
-            {
-                characterSprite = test_characterSprite,
-                name = "Leung",
-                color = Color.red
-            };
-            player2.MapActionToKey(Player.Action.Left, KeyCode.A);
-            player2.MapActionToKey(Player.Action.Right, KeyCode.D);
-            player2.MapActionToKey(Player.Action.Up, KeyCode.W);
-            player2.MapActionToKey(Player.Action.Down, KeyCode.S);
-            player2.MapActionToKey(Player.Action.Select, KeyCode.Q);
-            player2.MapActionToKey(Player.Action.Cancel, KeyCode.E);
-        }
-
-
         private void OnMapStart()
         {
-            IMapSetting mapSetting = GameObject.Find("MapSetting")?.GetComponent<IMapSetting>();
-            if (mapSetting != null)
-            {
-                mapStat = new MapStat(mapSetting);
-                OnRankFinished();
-            }
-            else
-            {
-                Debug.LogErrorFormat("Cannot find map setting!");
-            }
+            OnRankFinished();
         }
 
         private void OnObjectSelectionFinished()
         {
-            SceneStateManager.instance.Push(placeObjectUIScene, mapStat);
+            SceneStateManager.instance.Push(placeObjectUIScene, arg);
         }
 
         private void OnPlaceObjectFinished()
         {
-            SceneStateManager.instance.Push(roundUIScene, mapStat);
+            SceneStateManager.instance.Push(roundUIScene, arg);
         }
 
         private void OnRoundUISceneFinished()
         {
-            SceneStateManager.instance.Push(rankSceneState, mapStat);
+            SceneStateManager.instance.Push(rankSceneState, arg);
         }
 
         private void OnRankFinished()
         {
-            if ((mapStat.currentRound + 1) < mapStat.roundCount)
+            if ((arg.currentRound + 1) < arg.roundCount)
             {
-                ++mapStat.currentRound;
-                SceneStateManager.instance.Push(objectSelectionUIScene, mapStat);
+                ++arg.currentRound;
+                SceneStateManager.instance.Push(objectSelectionUIScene, arg);
             }
             else
             {

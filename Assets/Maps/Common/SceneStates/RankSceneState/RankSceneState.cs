@@ -36,7 +36,7 @@ namespace APlusOrFail.Maps.SceneStates.RankSceneState
             {
                 for (int i = waitingPlayers.Count - 1; i >= 0; --i)
                 {
-                    bool ok = HasKeyUp(waitingPlayers[i], Player.Action.Select);
+                    bool ok = HasKeyUp(waitingPlayers[i], Player.Action.Action1);
                     if (ok)
                     {
                         waitingPlayers.RemoveAt(i);

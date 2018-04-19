@@ -11,9 +11,10 @@ namespace APlusOrFail.Maps.SceneStates.PlaceObjectSceneState
         [NonSerialized] public new Camera camera;
         [NonSerialized] public ObjectPrefabInfo objectPrefab;
 
-        public ObjectPrefabInfo attachedObject { get; private set; }
-        private RectInt outerBound;
+        private ObjectPrefabInfo attachedObject;
+        private ICustomizableObject customizableObject;
         private ObjectGridPlacer objectPlacer;
+        private RectInt outerBound;
 
         public event EventHandler<ObjectCursor> onCursorDestroyed;
 
@@ -23,16 +24,25 @@ namespace APlusOrFail.Maps.SceneStates.PlaceObjectSceneState
             if (objectPrefab != null)
             {
                 attachedObject = Instantiate(objectPrefab);
-                outerBound = attachedObject.GetComponentsInChildren<ObjectGridRect>().GetLocalRects().GetOuterBound();
+                customizableObject = attachedObject.GetComponent<ICustomizableObject>();
                 objectPlacer = attachedObject.GetComponent<ObjectGridPlacer>();
                 objectPlacer.registerInGrid = false;
+                outerBound = attachedObject.GetComponentsInChildren<ObjectGridRect>().GetLocalRects().GetOuterBound();
             }
         }
 
         protected override void Update()
         {
             base.Update();
-            
+
+            int customizeAction = GetCustomizeAction(player);
+            if (customizeAction >= 0 && customizableObject.NextSetting(customizeAction))
+            {
+                outerBound = attachedObject.GetComponentsInChildren<ObjectGridRect>().GetLocalRects().GetOuterBound();
+            }
+            bool place = customizeAction < 0 && HasKeyUp(player, Player.Action.Action1);
+            bool rotate = customizeAction < 0 && !place && (HasKeyUp(player, Player.Action.Action2));
+
             RectInt rotatedOuterBound = outerBound.Rotate(objectPlacer.rotation);
             Vector2Int gridOffset = new Vector2Int(-rotatedOuterBound.xMax, -rotatedOuterBound.yMin + 1);
             Vector2Int objGridPosition = ObjectGrid.instance.WorldToGridPosition(camera.ViewportToWorldPoint(viewportLocation)) + gridOffset;
@@ -49,12 +59,12 @@ namespace APlusOrFail.Maps.SceneStates.PlaceObjectSceneState
                 Debug.LogFormat($"Player {player.id} cannot place!");
             }
 
-            if (placable && HasKeyUp(player, Player.Action.Select))
+            if (place && placable)
             {
                 objectPlacer.registerInGrid = true;
                 Destroy(gameObject);
             }
-            else if (HasKeyUp(player, Player.Action.Cancel))
+            else if (rotate)
             {
                 objectPlacer.rotation = (ObjectGridRects.Rotation)(((int)objectPlacer.rotation + 1) % 4);
             }
@@ -64,6 +74,23 @@ namespace APlusOrFail.Maps.SceneStates.PlaceObjectSceneState
         {
             KeyCode? code = player.GetKeyForAction(action);
             return code != null && Input.GetKeyUp(code.Value);
+        }
+
+        private bool HasKeyHold(Player player, Player.Action action)
+        {
+            KeyCode? code = player.GetKeyForAction(action);
+            return code != null && Input.GetKey(code.Value);
+        }
+
+        private int GetCustomizeAction(Player player)
+        {
+            if (HasKeyPressed(player, Player.Action.Action2)) {
+                if (HasKeyUp(player, Player.Action.Up)) return 0;
+                if (HasKeyUp(player, Player.Action.Left)) return 1;
+                if (HasKeyUp(player, Player.Action.Down)) return 2;
+                if (HasKeyUp(player, Player.Action.Right)) return 3;
+            }
+            return -1;
         }
 
         private void OnDestroy()

@@ -12,8 +12,8 @@ namespace APlusOrFail
             Right,
             Up,
             Down,
-            Select,
-            Cancel
+            Action1,
+            Action2
         }
 
 

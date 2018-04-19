@@ -85,7 +85,7 @@ namespace APlusOrFail.ObjectGrid
 
         public Rect GridToWorldRect(RectInt gridRect)
         {
-            return new Rect(GridToWorldPosition(gridRect.min), GridToWorldSize(gridRect.size));
+            return new Rect(GridToWorldPosition(gridRect.position), GridToWorldSize(gridRect.size));
         }
 
         public bool IsPlaceable(IEnumerable<RectInt> gridRects)

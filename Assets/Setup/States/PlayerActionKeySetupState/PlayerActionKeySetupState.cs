@@ -14,8 +14,8 @@ namespace APlusOrFail.Setup.States.PlayerActionKeySetupState
             Player.Action.Right,
             Player.Action.Up,
             Player.Action.Down,
-            Player.Action.Select,
-            Player.Action.Cancel
+            Player.Action.Action1,
+            Player.Action.Action2
         });
 
         private static string TextForAction(Player.Action action)
@@ -26,8 +26,8 @@ namespace APlusOrFail.Setup.States.PlayerActionKeySetupState
                 case Player.Action.Right: return "right";
                 case Player.Action.Up: return "jump";
                 case Player.Action.Down: return "squat";
-                case Player.Action.Select: return "select";
-                case Player.Action.Cancel: return "cancel";
+                case Player.Action.Action1: return "select";
+                case Player.Action.Action2: return "cancel";
                 default: return "";
             }
         }
