@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+﻿using System.Threading.Tasks;
 
 namespace APlusOrFail.Setup.States.DefaultSceneState
 {
@@ -7,9 +7,8 @@ namespace APlusOrFail.Setup.States.DefaultSceneState
     using PlayerNameAndColorSetupState;
     using PlayerActionKeySetupState;
 
-    public class DefaultState : SceneStateBehavior<object, object>
+    public class DefaultState : SceneStateBehavior<Void, Void>
     {
-
         public PlayerNameAndColorSetupState inputPlayerNameUIScene;
         public PlayerActionKeySetupState actionKeySetupUIScene;
         public CharacterOptionsState charOptionUIScene;
@@ -27,7 +26,7 @@ namespace APlusOrFail.Setup.States.DefaultSceneState
 
         private void OnCharacterSelected(Selectable selectedChar)
         {
-            if (phase.IsAtLeast(SceneStatePhase.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Focused))
             {
                 CharacterPlayer charPlayer = selectedChar.GetComponent<CharacterPlayer>();
                 if (charPlayer.player == null)
@@ -48,7 +47,7 @@ namespace APlusOrFail.Setup.States.DefaultSceneState
             }
         }
 
-        protected override void OnActivate(ISceneState unloadedSceneState, object result)
+        protected override Task OnFocus(ISceneState unloadedSceneState, object result)
         {
             if (activeNameColorSetupScene != null)
             {
@@ -76,6 +75,7 @@ namespace APlusOrFail.Setup.States.DefaultSceneState
                 }
                 activeKeySetupScene = null;
             }
+            return Task.CompletedTask;
         }
 
     }

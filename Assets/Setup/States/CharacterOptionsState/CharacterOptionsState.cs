@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Threading.Tasks;
+using UnityEngine;
 using UnityEngine.UI;
 
 namespace APlusOrFail.Setup.States.CharacterOptionState
@@ -8,7 +9,7 @@ namespace APlusOrFail.Setup.States.CharacterOptionState
     using CharacterSelectionState;
     using PlayerActionKeySetupState;
 
-    public class CharacterOptionsState : SceneStateBehavior<object, object>
+    public class CharacterOptionsState : SceneStateBehavior<Void, Void>
     {
         public RectTransform uiScene;
         public Button changeNameColorButton;
@@ -36,7 +37,7 @@ namespace APlusOrFail.Setup.States.CharacterOptionState
             HideUI();
         }
 
-        protected override void OnActivate(ISceneState unloadedSceneState, object result)
+        protected override Task OnFocus(ISceneState unloadedSceneState, object result)
         {
             ShowUI();
             if (activeCharSelectionUIScene != null)
@@ -47,16 +48,18 @@ namespace APlusOrFail.Setup.States.CharacterOptionState
                 }
                 activeCharSelectionUIScene = null;
             }
+            return Task.CompletedTask;
         }
 
-        protected override void OnDeactivate()
+        protected override Task OnBlur()
         {
             HideUI();
+            return Task.CompletedTask;
         }
 
         private void OnChangeNameColorButtonClicked()
         {
-            if (phase.IsAtLeast(SceneStatePhase.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Focused))
             {
                 SceneStateManager.instance.Push(nameColorSetupUIScene, null);
                 nameColorSetupUIScene.character = character;
@@ -65,7 +68,7 @@ namespace APlusOrFail.Setup.States.CharacterOptionState
 
         private void OnChooseCharacterButtonClicked()
         {
-            if (phase.IsAtLeast(SceneStatePhase.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Focused))
             {
                 SceneStateManager.instance.Push(charSelectionUIScene, null);
                 activeCharSelectionUIScene = charSelectionUIScene;
@@ -75,7 +78,7 @@ namespace APlusOrFail.Setup.States.CharacterOptionState
 
         private void OnRemapActionKeyButtonClicked()
         {
-            if (phase.IsAtLeast(SceneStatePhase.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Focused))
             {
                 SceneStateManager.instance.Push(actionKeySetupUIScene, null);
                 actionKeySetupUIScene.character = character;
@@ -84,20 +87,20 @@ namespace APlusOrFail.Setup.States.CharacterOptionState
 
         private void OnCloseButtonClicked()
         {
-            if (phase.IsAtLeast(SceneStatePhase.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Focused))
             {
-                SceneStateManager.instance.Pop(this);
+                SceneStateManager.instance.Pop(this, null);
             }
         }
 
         private void OnDeletePlayerButtonClicked()
         {
-            if (phase.IsAtLeast(SceneStatePhase.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Focused))
             {
                 CharacterPlayer charPlayer = character.GetComponent<CharacterPlayer>();
                 charPlayer.player.Delete();
                 charPlayer.player = null;
-                SceneStateManager.instance.Pop(this);
+                SceneStateManager.instance.Pop(this, null);
             }
         }
 

@@ -1,5 +1,6 @@
 ﻿using System.Linq;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace APlusOrFail.Maps.SceneStates.RankSceneState
@@ -17,22 +18,25 @@ namespace APlusOrFail.Maps.SceneStates.RankSceneState
             HideUI();
         }
 
-        protected override void OnActivate(ISceneState unloadedSceneState, object result)
+        protected override Task OnFocus(ISceneState unloadedSceneState, object result)
         {
-            base.OnActivate(unloadedSceneState, result);
-            waitingPlayers.AddRange(arg.playerStats.Select(ps => ps.player));
-            ShowUI();
+            if (unloadedSceneState == null)
+            {
+                waitingPlayers.AddRange(arg.playerStats.Select(ps => ps.player));
+                ShowUI();
+            }
+            return Task.CompletedTask;
         }
 
-        protected override void OnDeactivate()
+        protected override Task OnBlur()
         {
-            base.OnDeactivate();
             HideUI();
+            return Task.CompletedTask;
         }
 
         private void Update()
         {
-            if (phase.IsAtLeast(SceneStatePhase.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Focused))
             {
                 for (int i = waitingPlayers.Count - 1; i >= 0; --i)
                 {
@@ -45,7 +49,7 @@ namespace APlusOrFail.Maps.SceneStates.RankSceneState
 
                 if (waitingPlayers.Count == 0)
                 { 
-                    SceneStateManager.instance.Pop(this);
+                    SceneStateManager.instance.Pop(this, null);
                 }
             }
         }

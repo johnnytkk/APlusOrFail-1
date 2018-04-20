@@ -1,11 +1,12 @@
-﻿using UnityEngine;
+﻿using System.Threading.Tasks;
+using UnityEngine;
 using UnityEngine.UI;
 
 namespace APlusOrFail.Setup.States.CharacterSelectionState
 {
     using Character;
 
-    public class CharacterSelectionState : SceneStateBehavior<object, object>
+    public class CharacterSelectionState : SceneStateBehavior<Void, Void>
     {
         public RectTransform uiScene;
         public Text messageText;
@@ -27,34 +28,37 @@ namespace APlusOrFail.Setup.States.CharacterSelectionState
             HideUI();
         }
 
-        protected override void OnLoad(object arg)
+        protected override Task OnLoad(ISceneState unloadedSceneState, object result)
         {
             cancelled = false;
             selectedCharacter = null;
+            return Task.CompletedTask;
         }
 
-        protected override void OnActivate(ISceneState unloadedSceneState, object result)
+        protected override Task OnFocus(ISceneState unloadedSceneState, object result)
         {
             ShowUI();
+            return Task.CompletedTask;
         }
 
-        protected override void OnDeactivate()
+        protected override Task OnBlur()
         {
             HideUI();
+            return Task.CompletedTask;
         }
 
         private void OnCancelButtonClicked()
         {
-            if (phase.IsAtLeast(SceneStatePhase.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Focused))
             {
                 cancelled = true;
-                SceneStateManager.instance.Pop(this);
+                SceneStateManager.instance.Pop(this, null);
             }
         }
 
         private void OnCharactedSelected(Selectable selectedChar)
         {
-            if (phase.IsAtLeast(SceneStatePhase.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Focused))
             {
                 CharacterPlayer selectedCharPlayer = selectedChar.GetComponent<CharacterPlayer>();
                 if (selectedChar.gameObject != originalCharacter && selectedCharPlayer.player != null)
@@ -71,7 +75,7 @@ namespace APlusOrFail.Setup.States.CharacterSelectionState
                         originalCharPlayer.player = null;
                         selectedCharPlayer.player.characterSprite = selectedChar.GetComponent<CharacterSprite>().overrideCharacterSprite;
                     }
-                    SceneStateManager.instance.Pop(this);
+                    SceneStateManager.instance.Pop(this, null);
                 }
                 
             }

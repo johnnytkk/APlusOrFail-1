@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace APlusOrFail.Maps.SceneStates.DefaultSceneState
@@ -17,10 +18,8 @@ namespace APlusOrFail.Maps.SceneStates.DefaultSceneState
         public RankSceneState rankSceneState;
         
 
-        protected override void OnActivate(ISceneState unloadedSceneState, object result)
+        protected override Task OnFocus(ISceneState unloadedSceneState, object result)
         {
-            base.OnActivate(unloadedSceneState, result);
-
             Type unloadedType = unloadedSceneState?.GetType();
             if (unloadedSceneState == null)
             {
@@ -42,6 +41,7 @@ namespace APlusOrFail.Maps.SceneStates.DefaultSceneState
             {
                 OnRankFinished();
             }
+            return Task.CompletedTask;
         }
 
         private void OnMapStart()

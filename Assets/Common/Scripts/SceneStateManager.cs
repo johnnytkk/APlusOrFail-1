@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace APlusOrFail
@@ -19,10 +20,12 @@ namespace APlusOrFail
 
         public UnityEngine.Object initialSceneState;
 
+        private bool asyncUpdating;
         private readonly Stack<ISceneState> sceneStateStack = new Stack<ISceneState>();
         private Action pendingAction = Action.None;
         private ISceneState pendingSceneState;
         private object pendingArg;
+        private object pendingResult;
 
         private void Awake()
         {
@@ -42,9 +45,9 @@ namespace APlusOrFail
             while (sceneStateStack.Count > 0)
             {
                 ISceneState sceneState = sceneStateStack.Pop();
-                if (sceneState.phase.IsAtLeast(SceneStatePhase.Activated))
+                if (sceneState.phase.IsAtLeast(SceneStatePhase.Focused))
                 {
-                    sceneState.Deactivate();
+                    sceneState.MakeInvisible();
                 }
                 if (sceneState.phase.IsAtLeast(SceneStatePhase.Loaded))
                 {
@@ -82,55 +85,82 @@ namespace APlusOrFail
 
         private void Update()
         {
+            if (pendingAction != Action.None && !asyncUpdating)
+            {
+                UpdateAsync().ContinueWith(t => Debug.LogException(t.Exception), TaskContinuationOptions.OnlyOnFaulted);
+            }
+        }
+
+        private async Task UpdateAsync()
+        {
+            asyncUpdating = true;
+
             Action pendingAction = this.pendingAction;
             ISceneState pendingSceneState = this.pendingSceneState;
             object pendingArg = this.pendingArg;
+            object pendingResult = this.pendingResult;
 
             this.pendingAction = Action.None;
             this.pendingSceneState = null;
             this.pendingArg = null;
+            this.pendingResult = null;
+
+            ISceneState oldSceneState, newSceneState;
 
             switch (pendingAction)
             {
                 case Action.Push:
-                    if (sceneStateStack.Count > 0)
-                    {
-                        ISceneState scene = sceneStateStack.Peek();
-                        scene.Deactivate();
-                    }
-                    sceneStateStack.Push(pendingSceneState);
-                    pendingSceneState.Load(pendingArg);
-                    pendingSceneState.Activate(null, null);
+                    oldSceneState = sceneStateStack.Count > 0 ? sceneStateStack.Peek() : null;
+                    newSceneState = pendingSceneState;
+                    sceneStateStack.Push(newSceneState);
+
+                    await WhenTwo(
+                        newSceneState.Load(pendingArg, null, null),
+                        NonNullTask(oldSceneState?.Blur())
+                    );
+                    await WhenTwo(
+                        newSceneState.MakeVisible(null, null),
+                        NonNullTask(oldSceneState?.MakeInvisible())
+                    );
+                    await newSceneState.Focus(null, null);
                     break;
 
                 case Action.Replace:
-                    if (sceneStateStack.Count > 0)
-                    {
-                        ISceneState unloadedSceneState = sceneStateStack.Peek();
-                        unloadedSceneState.Deactivate();
-                        unloadedSceneState.Unload();
-                        sceneStateStack.Pop();
-                    }
-                    sceneStateStack.Push(pendingSceneState);
-                    pendingSceneState.Load(pendingArg);
-                    pendingSceneState.Activate(null, null);
+                    oldSceneState = sceneStateStack.Pop();
+                    newSceneState = pendingSceneState;
+                    sceneStateStack.Push(newSceneState);
+
+                    await WhenTwo(
+                        newSceneState.Load(pendingArg, null, null),
+                        oldSceneState.Blur()
+                    );
+                    await WhenTwo(
+                        newSceneState.MakeVisible(null, null),
+                        oldSceneState.MakeInvisible()
+                    );
+                    await WhenTwo(
+                        newSceneState.Focus(null, null),
+                        oldSceneState.Unload()
+                    );
                     break;
 
                 case Action.Pop:
-                    if (sceneStateStack.Count > 0)
-                    {
-                        ISceneState detachedScene = sceneStateStack.Peek();
-                        detachedScene.Deactivate();
-                        object result = detachedScene.Unload();
-                        sceneStateStack.Pop();
-                        if (sceneStateStack.Count > 0)
-                        {
-                            ISceneState topScene = sceneStateStack.Peek();
-                            topScene.Activate(detachedScene, result);
-                        }
-                    }
+                    oldSceneState = sceneStateStack.Pop();
+                    newSceneState = sceneStateStack.Count > 0 ? sceneStateStack.Peek() : null;
+                    
+                    await oldSceneState.Blur();
+                    await WhenTwo(
+                        NonNullTask(newSceneState?.MakeVisible(oldSceneState, pendingResult)),
+                        oldSceneState.MakeInvisible()
+                    );
+                    await WhenTwo(
+                        NonNullTask(newSceneState?.Focus(oldSceneState, pendingResult)),
+                        oldSceneState.Unload()
+                    );
                     break;
             }
+
+            asyncUpdating = false;
         }
 
         public void Push<TA, TR>(ISceneState<TA, TR> sceneState, TA arg)
@@ -138,30 +168,49 @@ namespace APlusOrFail
             pendingAction = Action.Push;
             pendingSceneState = sceneState;
             pendingArg = arg;
+            pendingResult = null;
         }
 
-        public void Replace<TA, TR>(ISceneState<TA, TR> sceneState, TA arg)
+        public void Replace<TA1, TR1, TA2, TR2>(ISceneState<TA1, TR1> sceneState, TR1 result, ISceneState<TA2, TR2> newSceneState, TA2 arg)
         {
-            pendingAction = Action.Replace;
-            pendingSceneState = sceneState;
-            pendingArg = arg;
-        }
-
-        public void Pop(ISceneState sceneState)
-        {
-            if (sceneStateStack.Peek() != sceneState)
+            if (sceneStateStack.Count == 0 || sceneStateStack.Peek() != newSceneState)
             {
-                throw new InvalidOperationException("The scene to pop is not active!");
+                throw new InvalidOperationException("The scene to pop is not at top!");
+            }
+            pendingAction = Action.Replace;
+            pendingSceneState = newSceneState;
+            pendingArg = arg;
+            pendingResult = result;
+        }
+
+        public void Pop<TA, TR>(ISceneState<TA, TR> sceneState, TR result)
+        {
+            if (sceneStateStack.Count == 0 || sceneStateStack.Peek() != sceneState)
+            {
+                throw new InvalidOperationException("The scene to pop is not at top!");
             }
             pendingAction = Action.Pop;
             pendingSceneState = null;
             pendingArg = null;
+            pendingResult = result;
         }
 
         public void Undo()
         {
             pendingAction = Action.None;
             pendingSceneState = null;
+            pendingArg = null;
+            pendingResult = null;
+        }
+
+        private Task NonNullTask(Task task) => task ?? Task.CompletedTask;
+
+        private readonly Task[] _tasks = new Task[2];
+        private Task WhenTwo(Task task1, Task task2)
+        {
+            _tasks[0] = task1;
+            _tasks[1] = task2;
+            return Task.WhenAll(_tasks);
         }
     }
 }

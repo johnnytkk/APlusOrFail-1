@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace APlusOrFail.Maps.SceneStates.RoundSceneState
@@ -16,10 +17,8 @@ namespace APlusOrFail.Maps.SceneStates.RoundSceneState
         private readonly HashSet<CharacterControl> endedCharControls = new HashSet<CharacterControl>();
 
 
-        protected override void OnActivate(ISceneState unloadedSceneState, object result)
+        protected override Task OnFocus(ISceneState unloadedSceneState, object result)
         {
-            base.OnActivate(unloadedSceneState, result);
-
             if (unloadedSceneState == null)
             {
                 ObjectGridPlacer spawnArea = arg.roundSettings[arg.currentRound].spawnArea;
@@ -51,12 +50,11 @@ namespace APlusOrFail.Maps.SceneStates.RoundSceneState
                     OnAllCharacterEnded();
                 }
             }
+            return Task.CompletedTask;
         }
 
-        protected override void OnDeactivate()
+        protected override Task OnBlur()
         {
-            base.OnDeactivate();
-            
             foreach (CharacterControl charControl in notEndedCharControls.Concat(endedCharControls))
             {
                 Player player = charControl.GetComponent<CharacterPlayer>().player;
@@ -75,6 +73,8 @@ namespace APlusOrFail.Maps.SceneStates.RoundSceneState
             }
             notEndedCharControls.Clear();
             endedCharControls.Clear();
+
+            return Task.CompletedTask;
         }
 
         private void OnCharEnded(CharacterControl charControl, bool ended)
@@ -98,7 +98,7 @@ namespace APlusOrFail.Maps.SceneStates.RoundSceneState
 
         private void OnAllCharacterEnded()
         {
-            SceneStateManager.instance.Pop(this);
+            SceneStateManager.instance.Pop(this, null);
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -6,7 +7,7 @@ namespace APlusOrFail.Setup.States.PlayerNameAndColorSetupState
 {
     using Character;
 
-    public class PlayerNameAndColorSetupState : SceneStateBehavior<object, object>
+    public class PlayerNameAndColorSetupState : SceneStateBehavior<Void, Void>
     {
         public RectTransform uiScene;
         public InputField nameInputField;
@@ -31,33 +32,36 @@ namespace APlusOrFail.Setup.States.PlayerNameAndColorSetupState
             HideUI();
         }
 
-        protected override void OnLoad(object arg)
+        protected override Task OnLoad(ISceneState unloadedSceneState, object result)
         {
             cancelled = false;
             player = character.GetComponent<CharacterPlayer>().player;
             color = player.color;
             nameInputField.text = player.name;
+            return Task.CompletedTask;
         }
 
-        protected override void OnActivate(ISceneState unloadedSceneState, object result)
+        protected override Task OnFocus(ISceneState unloadedSceneState, object result)
         {
             ShowUI();
+            return Task.CompletedTask;
         }
 
-        protected override void OnDeactivate()
+        protected override Task OnBlur()
         {
             HideUI();
+            return Task.CompletedTask;
         }
 
-        protected override object OnUnload()
+        protected override Task OnUnload()
         {
             player = null;
-            return null;
+            return Task.CompletedTask;
         }
 
         private void OnColorButtonSelected(ColorButton button)
         {
-            if (phase.IsAtLeast(SceneStatePhase.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Focused))
             {
                 color = button.color;
             }
@@ -65,20 +69,20 @@ namespace APlusOrFail.Setup.States.PlayerNameAndColorSetupState
 
         private void OnEnterButtonClicked()
         {
-            if (phase.IsAtLeast(SceneStatePhase.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Focused))
             {
                 player.name = nameInputField.text;
                 player.color = color;
-                SceneStateManager.instance.Pop(this);
+                SceneStateManager.instance.Pop(this, null);
             }
         }
 
         private void OnCancelButtonClicked()
         {
-            if (phase.IsAtLeast(SceneStatePhase.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Focused))
             {
                 cancelled = true;
-                SceneStateManager.instance.Pop(this);
+                SceneStateManager.instance.Pop(this, null);
             }
         }
 

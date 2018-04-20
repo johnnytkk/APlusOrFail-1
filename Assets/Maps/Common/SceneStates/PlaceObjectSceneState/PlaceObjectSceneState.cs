@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace APlusOrFail.Maps.SceneStates.PlaceObjectSceneState
@@ -20,16 +21,16 @@ namespace APlusOrFail.Maps.SceneStates.PlaceObjectSceneState
             HideUI();
         }
 
-        protected override void OnActivate(ISceneState unloadedSceneState, object result)
+        protected override Task OnFocus(ISceneState unloadedSceneState, object result)
         {
-            base.OnActivate(unloadedSceneState, result);
             ShowUI();
+            return Task.CompletedTask;
         }
 
-        protected override void OnDeactivate()
+        protected override Task OnBlur()
         {
-            base.OnDeactivate();
             HideUI();
+            return Task.CompletedTask;
         }
 
         private void ShowUI()
@@ -50,7 +51,7 @@ namespace APlusOrFail.Maps.SceneStates.PlaceObjectSceneState
             }
             if (objectCursors.Count == 0)
             {
-                SceneStateManager.instance.Pop(this);
+                SceneStateManager.instance.Pop(this, null);
             }
         }
 
@@ -76,7 +77,7 @@ namespace APlusOrFail.Maps.SceneStates.PlaceObjectSceneState
             RemoveObjectCursor(cursor);
             if (objectCursors.Count == 0)
             {
-                SceneStateManager.instance.Pop(this);
+                SceneStateManager.instance.Pop(this, null);
             }
         }
     }

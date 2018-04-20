@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace APlusOrFail.Maps.SceneStates.ObjectSelectionSceneState
@@ -23,19 +24,19 @@ namespace APlusOrFail.Maps.SceneStates.ObjectSelectionSceneState
             HideUI();
         }
 
-        protected override void OnActivate(ISceneState unloadedSceneState, object result)
+        protected override Task OnFocus(ISceneState unloadedSceneState, object result)
         {
-            base.OnActivate(unloadedSceneState, result);
             if (unloadedSceneState == null)
             {
                 ShowUI();
             }
+            return Task.CompletedTask;
         }
 
-        protected override void OnDeactivate()
+        protected override Task OnBlur()
         {
-            base.OnDeactivate();
             HideUI();
+            return Task.CompletedTask;
         }
 
         private void ShowUI()
@@ -106,7 +107,7 @@ namespace APlusOrFail.Maps.SceneStates.ObjectSelectionSceneState
 
         private void Update()
         {
-            if (phase.IsAtLeast(SceneStatePhase.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Focused))
             {
                 for (int i = keyCursors.Count - 1; i >= 0; --i)
                 {
@@ -126,7 +127,7 @@ namespace APlusOrFail.Maps.SceneStates.ObjectSelectionSceneState
 
                             if (keyCursors.Count == 0 || attachedPrefabInfos.Count == 0)
                             {
-                                SceneStateManager.instance.Pop(this);
+                                SceneStateManager.instance.Pop(this, null);
                             }
                         }
                     }

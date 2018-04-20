@@ -1,21 +1,23 @@
 ﻿using System;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace APlusOrFail
 {
+    public enum SceneStatePhase
+    {
+        Initialized,
+        Loaded,
+        Visible,
+        Focused
+    }
+
     public static class SceneStateExtensions
     {
         public static bool IsAtLeast(this SceneStatePhase state, SceneStatePhase min)
         {
             return state >= min;
         }
-    }
-
-    public enum SceneStatePhase
-    {
-        Initialized,
-        Loaded,
-        Activated
     }
 
     public interface ISceneState
@@ -25,20 +27,22 @@ namespace APlusOrFail
 
         SceneStatePhase phase { get; }
 
-        void Load(object arg);
+        Task Load(object arg, ISceneState unloadedSceneState, object result);
 
-        void Activate(ISceneState unloadedSceneState, object result);
+        Task MakeVisible(ISceneState unloadedSceneState, object result);
 
-        void Deactivate();
+        Task Focus(ISceneState unloadedSceneState, object result);
 
-        object Unload();
+        Task Blur();
+
+        Task MakeInvisible();
+
+        Task Unload();
     }
 
     public interface ISceneState<TArg, TResult> : ISceneState
     {
-        void Load(TArg arg);
-
-        new TResult Unload();
+        Task Load(TArg arg, ISceneState unloadedSceneState, object result);
     }
 
     public class SceneStateBehavior<TArg, TResult> : MonoBehaviour, ISceneState<TArg, TResult>
@@ -47,52 +51,58 @@ namespace APlusOrFail
         public Type resultType => typeof(TResult);
         
         public SceneStatePhase phase { get; private set; } = SceneStatePhase.Initialized;
-
-        void ISceneState.Load(object arg) => Load((TArg)arg);
-
-        public void Load(TArg arg)
-        {
-            phase = SceneStatePhase.Loaded;
-            OnLoad(arg);
-        }
-
-        public void Activate(ISceneState unloadedSceneState, object result)
-        {
-            phase = SceneStatePhase.Activated;
-            OnActivate(unloadedSceneState, result);
-        }
-
-        public void Deactivate()
-        {
-            OnDeactivate();
-            phase = SceneStatePhase.Loaded;
-        }
-
-        object ISceneState.Unload() => Unload();
-
-        public TResult Unload()
-        {
-            TResult result = OnUnload();
-            phase = SceneStatePhase.Initialized;
-            return result;
-        }
-
         protected TArg arg { get; private set; }
 
-        protected TResult result { get; set; }
-
-        protected virtual void OnLoad(TArg arg) => this.arg = arg;
-
-        protected virtual void OnActivate(ISceneState unloadedSceneState, object result) { }
-
-        protected virtual void OnDeactivate() { }
-
-        protected virtual TResult OnUnload()
+        Task ISceneState.Load(object arg, ISceneState unloadedSceneState, object result) => Load((TArg)arg, unloadedSceneState, result);
+        public Task Load(TArg arg, ISceneState unloadedSceneState, object result)
         {
-            arg = default(TArg);
-            TResult result = this.result;
-            this.result = default(TResult);
-            return result;
+            phase = SceneStatePhase.Loaded;
+            this.arg = arg;
+            return OnLoad(unloadedSceneState, result);
         }
+
+        public Task MakeVisible(ISceneState unloadedSceneState, object result)
+        {
+            phase = SceneStatePhase.Visible;
+            return OnMakeVisible(unloadedSceneState, result);
+        }
+
+        public Task Focus(ISceneState unloadedSceneState, object result)
+        {
+            phase = SceneStatePhase.Focused;
+            return OnFocus(unloadedSceneState, result);
+        }
+
+        public async Task Blur()
+        {
+            await OnBlur();
+            phase = SceneStatePhase.Visible;
+        }
+
+        public async Task MakeInvisible()
+        {
+            await OnMakeInvisible();
+            phase = SceneStatePhase.Loaded;
+        }
+        
+        public async Task Unload()
+        {
+            await OnUnload();
+            arg = default(TArg);
+            phase = SceneStatePhase.Initialized;
+        }
+
+
+        protected virtual Task OnLoad(ISceneState unloadedSceneState, object result) => Task.CompletedTask;
+
+        protected virtual Task OnMakeVisible(ISceneState unloadedSceneState, object result) => Task.CompletedTask;
+
+        protected virtual Task OnFocus(ISceneState unloadedSceneState, object result) => Task.CompletedTask;
+
+        protected virtual Task OnBlur() => Task.CompletedTask;
+
+        protected virtual Task OnMakeInvisible() => Task.CompletedTask;
+
+        protected virtual Task OnUnload() => Task.CompletedTask;
     }
 }

@@ -1,13 +1,14 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using UnityEngine.UI;
 
 namespace APlusOrFail.Setup.States.PlayerActionKeySetupState
 {
     using Character;
 
-    public class PlayerActionKeySetupState : SceneStateBehavior<object, object>
+    public class PlayerActionKeySetupState : SceneStateBehavior<Void, Void>
     {
         private static readonly ReadOnlyCollection<Player.Action> actionSequence = new ReadOnlyCollection<Player.Action>(new Player.Action[]{
             Player.Action.Left,
@@ -51,36 +52,40 @@ namespace APlusOrFail.Setup.States.PlayerActionKeySetupState
             HideUI();
         }
 
-        protected override void OnLoad(object arg)
+        protected override Task OnLoad(ISceneState unloadedSceneState, object result)
         {
             charPlayer = character.GetComponent<CharacterPlayer>();
             actionKeyMap = new Dictionary<Player.Action, KeyCode>();
             setupingActionIndex = 0;
 
             cancelled = false;
+
+            return Task.CompletedTask;
         }
 
-        protected override void OnActivate(ISceneState unloadedSceneState, object result)
+        protected override Task OnFocus(ISceneState unloadedSceneState, object result)
         {
             ShowUI();
             enterKeyMessageText.text = $"Key for {TextForAction(actionSequence[setupingActionIndex])}";
+            return Task.CompletedTask;
         }
 
-        protected override void OnDeactivate()
+        protected override Task OnBlur()
         {
             HideUI();
+            return Task.CompletedTask;
         }
 
-        protected override object OnUnload()
+        protected override Task OnUnload()
         {
             charPlayer = null;
             actionKeyMap = null;
-            return null;
+            return Task.CompletedTask;
         }
 
         private void Update()
         {
-            if (phase.IsAtLeast(SceneStatePhase.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Focused))
             {
                 KeyCode? key = KeyDetector.GetKeyDowned();
                 if (key != null)
@@ -115,16 +120,16 @@ namespace APlusOrFail.Setup.States.PlayerActionKeySetupState
                     {
                         charPlayer.player.MapActionToKey(pair.Key, pair.Value);
                     }
-                    SceneStateManager.instance.Pop(this);
+                    SceneStateManager.instance.Pop(this, null);
                 }
             }
         }
 
         private void OnCancelButtonClicked()
         {
-            if (phase.IsAtLeast(SceneStatePhase.Activated))
+            if (phase.IsAtLeast(SceneStatePhase.Focused))
             {
-                SceneStateManager.instance.Pop(this);
+                SceneStateManager.instance.Pop(this, null);
                 cancelled = true;
             }
         }
