@@ -6,11 +6,14 @@ using UnityEngine;
 namespace APlusOrFail.Maps
 {
     using Objects;
+    using Components.AutoResizeCamera;
 
     public class MapStat : IMapStat
     {
         public string name { get; }
         IReadOnlyList<IRoundSetting> IMapSetting.roundSettings => roundStats;
+        public MapArea mapArea { get; }
+        public AutoResizeCamera camera { get; }
         
         public IReadOnlyList<IRoundStat> roundStats { get; }
         IReadOnlyList<IReadonlyRoundStat> IReadOnlyMapStat.roundStats => roundStats;
@@ -29,6 +32,8 @@ namespace APlusOrFail.Maps
         public MapStat(IMapSetting mapSetting)
         {
             name = mapSetting.name;
+            mapArea = mapSetting.mapArea;
+            camera = mapSetting.camera;
 
             List<IRoundStat> roundStats = new List<IRoundStat>(mapSetting.roundSettings.Count);
             for (int i = 0; i < mapSetting.roundSettings.Count; ++i)
@@ -65,6 +70,8 @@ namespace APlusOrFail.Maps
         public string name { get; }
         public int roundScore { get; }
         public IReadOnlyList<ObjectPrefabInfo> usableObjects { get; }
+        public RoundState state { get; set; } = RoundState.None;
+
 
         public RoundStat(IMapStat mapStat, int order, IRoundSetting roundSetting)
         {

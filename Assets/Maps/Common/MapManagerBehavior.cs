@@ -6,6 +6,7 @@ using UnityEngine;
 namespace APlusOrFail.Maps
 {
     using Objects;
+    using Components.AutoResizeCamera;
     using SceneStates.DefaultSceneState;
 
     public abstract class MapManagerBehavior : MonoBehaviour, IMapManager
@@ -14,11 +15,15 @@ namespace APlusOrFail.Maps
         {
             public string name { get; }
             public IReadOnlyList<IRoundSetting> roundSettings { get; }
+            public MapArea mapArea { get; }
+            public AutoResizeCamera camera { get; }
 
-            public MapSetting(string name, IEnumerable<IRoundSetting> roundSettings)
+            public MapSetting(string name, IEnumerable<IRoundSetting> roundSettings, MapArea mapArea, AutoResizeCamera camera)
             {
                 this.name = name;
                 this.roundSettings = new ReadOnlyCollection<IRoundSetting>(roundSettings.ToList());
+                this.mapArea = mapArea;
+                this.camera = camera;
             }
         }
 
@@ -41,13 +46,19 @@ namespace APlusOrFail.Maps
 
         public DefaultSceneState defaultSceneState;
         public string mapName;
+        public MapArea mapArea;
+        public AutoResizeCamera camera;
           
         public IMapStat stat { get; protected set; }
 
 
         protected virtual void Awake()
         {
-            if (!((IMapManager)this).Register())
+            if (((IMapManager)this).Register())
+            {
+                stat = new MapStat(GetMapSetting());
+            }
+            else
             {
                 Debug.LogErrorFormat("There is another map manager already!");
                 Destroy(this);
@@ -56,7 +67,6 @@ namespace APlusOrFail.Maps
 
         protected virtual void Start()
         {
-            stat = new MapStat(GetMapSetting());
             FindObjectOfType<SceneStateManager>().Push(defaultSceneState, stat);
         }
 
@@ -65,7 +75,7 @@ namespace APlusOrFail.Maps
             ((IMapManager)this).Unregister();
         }
 
-        protected virtual IMapSetting GetMapSetting() => new MapSetting(mapName, GetRoundSettings());
+        protected virtual IMapSetting GetMapSetting() => new MapSetting(mapName, GetRoundSettings(), mapArea, camera);
 
         protected abstract IEnumerable<IRoundSetting> GetRoundSettings();
     }

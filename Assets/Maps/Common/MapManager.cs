@@ -4,6 +4,8 @@
     {
         public static IMapManager instance { get; private set; }
 
+        public static IMapStat mapStat => instance?.stat;
+
         public static bool Register(this IMapManager manager)
         {
             if (instance == null)

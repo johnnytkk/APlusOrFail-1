@@ -51,25 +51,30 @@ namespace APlusOrFail.Maps.SceneStates.DefaultSceneState
 
         private void OnObjectSelectionFinished()
         {
+            arg.roundStats[arg.currentRound].state = RoundState.PlacingObjects;
             SceneStateManager.instance.Push(placeObjectUIScene, arg);
         }
 
         private void OnPlaceObjectFinished()
         {
+            arg.roundStats[arg.currentRound].state = RoundState.Playing;
             SceneStateManager.instance.Push(roundUIScene, arg);
         }
 
         private void OnRoundUISceneFinished()
         {
+            arg.roundStats[arg.currentRound].state = RoundState.Ranking;
             SceneStateManager.instance.Push(rankSceneState, arg);
         }
 
         private void OnRankFinished()
         {
-            if ((arg.currentRound + 1) < arg.roundCount)
+            if (arg.currentRound >= 0 && arg.currentRound < arg.roundCount) arg.roundStats[arg.currentRound].state = RoundState.None;
+            ++arg.currentRound;
+            if (arg.currentRound < arg.roundCount)
             {
-                ++arg.currentRound;
                 SceneStateManager.instance.Push(objectSelectionUIScene, arg);
+                arg.roundStats[arg.currentRound].state = RoundState.SelectingObjects;
             }
             else
             {

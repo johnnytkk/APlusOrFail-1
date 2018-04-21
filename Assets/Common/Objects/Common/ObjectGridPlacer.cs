@@ -3,8 +3,10 @@ using UnityEngine;
 
 namespace APlusOrFail.Objects
 {
-    using ObjectGrid;
+    using Maps;
 
+    [DisallowMultipleComponent]
+    [ExecuteInEditMode]
     public class ObjectGridPlacer : MonoBehaviour
     {
         [SerializeField] private Vector2Int _gridPosition;
@@ -21,16 +23,16 @@ namespace APlusOrFail.Objects
         private bool registeredInGrid;
         private readonly List<ObjectGridRect> objectGridRects = new List<ObjectGridRect>();
         private IEnumerable<RectInt> worldGridRects => objectGridRects.GetLocalRects().Rotate(rotation).Move(gridPosition);
+        
 
+        private void OnEnable()
+        {
+            UpdateProperties();
+        }
 
         private void Start()
         {
             started = true;
-            UpdateProperties();
-        }
-
-        private void OnEnable()
-        {
             UpdateProperties();
         }
 
@@ -43,7 +45,7 @@ namespace APlusOrFail.Objects
         {
             if (registeredInGrid)
             {
-                ObjectGrid.instance?.Remove(gameObject);
+                MapManager.mapStat?.mapArea?.RemoveFromGrid(gameObject);
                 registeredInGrid = false;
             }
         }
@@ -65,23 +67,23 @@ namespace APlusOrFail.Objects
                 {
                     if (registeredInGrid)
                     {
-                        ObjectGrid.instance.Remove(gameObject);
+                        MapManager.mapStat.mapArea.RemoveFromGrid(gameObject);
                         registeredInGrid = false;
                     }
 
                     GetComponentsInChildren(true, objectGridRects);
                     if (registerInGrid)
                     {
-                        ObjectGrid.instance.Add(worldGridRects, gameObject);
+                        MapManager.mapStat.mapArea.AddToGrid(worldGridRects, gameObject);
                         registeredInGrid = true;
                     }
-                    transform.position = ObjectGrid.instance.GridToWorldPosition(gridPosition);
+                    transform.position = MapManager.mapStat.mapArea.GridToWorldPosition(gridPosition);
                     transform.rotation = Quaternion.Euler(0, 0, 90 * (byte)rotation);
                 }
             }
             else
             {
-                ObjectGrid objectGrid = FindObjectOfType<ObjectGrid>();
+                MapArea objectGrid = FindObjectOfType<MapArea>();
                 if (objectGrid != null)
                 {
                     GetComponentsInChildren(true, objectGridRects);
@@ -91,6 +93,6 @@ namespace APlusOrFail.Objects
             }
         }
 
-        public bool IsRegisterable() => started && enabled && ObjectGrid.instance?.IsPlaceable(worldGridRects) == true;
+        public bool IsRegisterable() => started && enabled && MapManager.mapStat.mapArea.IsPlaceable(worldGridRects);
     }
 }

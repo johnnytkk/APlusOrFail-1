@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -6,7 +7,6 @@ using UnityEngine;
 namespace APlusOrFail.Maps.SceneStates.ObjectSelectionSceneState
 {
     using Objects;
-    using ObjectGrid;
     
     public class ObjectSelectionSceneState : SceneStateBehavior<IMapStat, Void>
     {
@@ -51,18 +51,13 @@ namespace APlusOrFail.Maps.SceneStates.ObjectSelectionSceneState
                 // https://answers.unity.com/questions/1007585/reading-and-setting-asn-objects-global-scale-with.html
 
                 ObjectPrefabInfo prefabInfo = Instantiate(usableObjects[i]);
-
-                ObjectGridPlacer gridPlacer = prefabInfo.GetComponent<ObjectGridPlacer>();
-                gridPlacer.enabled = false;
-
-                // obj.transform.parent = uiScene; // Fix the scale
-                attachedPrefabInfos.Add(prefabInfo);
-
+                prefabInfo.GetComponent<ObjectGridPlacer>().enabled = false;
                 prefabInfo.gameObject.SetLayerRecursively(LayerId.SelectableObjects);
-
+                attachedPrefabInfos.Add(prefabInfo);
+                // obj.transform.parent = uiScene; // Fix the scale
+                
                 RectInt objLocalGridBound = prefabInfo.GetComponentsInChildren<ObjectGridRect>().GetLocalRects().GetOuterBound();
-                Rect objLocalWorldBound = new Rect(ObjectGrid.instance.GridToWorldSize(objLocalGridBound.position), ObjectGrid.instance.GridToWorldSize(objLocalGridBound.size));
-                Vector2 center = (objLocalWorldBound.min + objLocalWorldBound.max) / 2;
+                Vector2 center = ((Vector2)(objLocalGridBound.min + objLocalGridBound.max)) / 2;
 
                 float angle = Mathf.PI / 2 - angleInterval * i;
                 Vector2 position = new Vector2(2 * Mathf.Cos(angle), 2 * Mathf.Sin(angle));

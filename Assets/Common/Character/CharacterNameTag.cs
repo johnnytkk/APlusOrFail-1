@@ -8,11 +8,11 @@ namespace APlusOrFail.Character
     public class CharacterNameTag : MonoBehaviour
     {
         
-        private NameTagCanvas.NameTagInfo nameTagInfo;
+        private NameTagCanvas0.NameTagInfo nameTagInfo;
         
         private void Start()
         {
-            nameTagInfo = NameTagCanvas.instance.AddNameTag(transform);
+            nameTagInfo = NameTagCanvas0.instance.AddNameTag(transform);
             nameTagInfo.worldOffset = new Vector2(0, 1);
 
             CharacterPlayer charPlayer = GetComponentInParent<CharacterPlayer>();
@@ -22,7 +22,7 @@ namespace APlusOrFail.Character
 
         private void OnDestroy()
         {
-            NameTagCanvas.instance?.RemoveNameTag(transform);
+            NameTagCanvas0.instance?.RemoveNameTag(transform);
         }
 
         private void OnPlayerChanged(CharacterPlayer charPlayer, Player newPlayer)

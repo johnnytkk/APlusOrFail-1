@@ -2,7 +2,7 @@
 
 namespace APlusOrFail
 {
-    using MainCamera;
+    using Components.AutoResizeCamera;
 
     public class CameraTraceCharacter : MonoBehaviour
     {

@@ -4,17 +4,22 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using UnityEngine;
 
-namespace APlusOrFail.ObjectGrid
+namespace APlusOrFail
 {
-    public class ObjectGrid : MonoBehaviour
+    using Character;
+
+    [DisallowMultipleComponent]
+    [ExecuteInEditMode]
+    [RequireComponent(typeof(BoxCollider2D))]
+    public class MapArea : MonoBehaviour
     {
         private class GridObject
         {
-            private readonly ObjectGrid outer;
+            private readonly MapArea outer;
             public readonly ReadOnlyCollection<RectInt> rects;
             public readonly GameObject obj;
 
-            public GridObject(ObjectGrid outer, IEnumerable<RectInt> rects, GameObject obj)
+            public GridObject(MapArea outer, IEnumerable<RectInt> rects, GameObject obj)
             {
                 this.outer = outer;
                 this.rects = new ReadOnlyCollection<RectInt>(rects.ToList());
@@ -23,69 +28,106 @@ namespace APlusOrFail.ObjectGrid
         }
 
 
-        public static ObjectGrid instance { get; private set; }
+        [SerializeField] private Vector2 _gridPosition;
+        public Vector2 gridPosition { get { return _gridPosition; } set { SetProperty(ref _gridPosition, value); } }
 
+        [SerializeField] private Vector2Int _gridSize;
+        public Vector2Int gridSize { get { return _gridSize; } set { SetProperty(ref _gridSize, new Vector2Int(Mathf.Max(value.x, 0), Mathf.Max(value.y, 0))); } }
         
-        public int gridColumnCount;
-        public int gridRowCount;
-        public float gridX = 0;
-        public float gridY = 0;
-        public float gridColumnWidth = 1;
-        public float gridRowHeight = 1;
+        [SerializeField] private Vector2 _gridCellSize;
+        public Vector2 gridCellSize { get { return _gridCellSize; } set { SetProperty(ref _gridCellSize, new Vector2(Mathf.Max(value.x, 0.01f), Mathf.Max(value.y, 0.01f))); } }
 
         private GridObject[,] grid;
         private readonly Dictionary<GameObject, GridObject> objectToGridMap = new Dictionary<GameObject, GridObject>();
 
+        private BoxCollider2D areaCollider;
+
+
         private void Awake()
         {
-            if (instance == null)
+            if (Application.isPlaying)
             {
-                instance = this;
-            }
-            else
-            {
-                Destroy(this);
-                Debug.LogErrorFormat("Found another object grid!");
-            }
-
-            grid = new GridObject[gridColumnCount, gridRowCount];
-        }
-
-        private void OnDestroy()
-        {
-            if (instance == this)
-            {
-                instance = null;
+                grid = new GridObject[gridSize.x, gridSize.y];
             }
         }
 
-        public Vector2Int WorldToGridPosition(Vector2 worldPosition)
+        private void OnEnable()
         {
-            return new Vector2Int(
-                Mathf.FloorToInt((worldPosition.x - gridX) / gridColumnWidth),
-                Mathf.FloorToInt((worldPosition.y - gridY) / gridRowHeight)
-            );
+            ApplyProperties();
         }
 
-        public Vector2 GridToWorldPosition(Vector2Int gridPosition)
+        private void Start()
         {
-            return new Vector2(
-                gridPosition.x * gridColumnWidth + gridX,
-                gridPosition.y * gridRowHeight + gridY
-            );
+            if (Application.isPlaying)
+            {
+                areaCollider = GetComponent<BoxCollider2D>();
+                ApplyProperties();
+            }
         }
 
-        public Vector2 GridToWorldSize(Vector2Int gridSize)
+        private void OnValidate()
         {
-            return new Vector2(
-                gridSize.x * gridColumnWidth,
-                gridSize.y * gridRowHeight
-            );
+            ApplyProperties();
         }
 
-        public Rect GridToWorldRect(RectInt gridRect)
+        private void SetProperty<T>(ref T property, T value)
         {
-            return new Rect(GridToWorldPosition(gridRect.position), GridToWorldSize(gridRect.size));
+            if (!property.Equals(value))
+            {
+                property = value;
+                ApplyProperties();
+            }
+        }
+
+        private void ApplyProperties()
+        {
+            BoxCollider2D areaCollider = Application.isPlaying ? this.areaCollider : GetComponent<BoxCollider2D>();
+            if (areaCollider != null)
+            {
+                transform.localPosition = gridPosition;
+                areaCollider.offset = ((Vector2)gridSize) / 2;
+                areaCollider.size = gridSize;
+                transform.localScale = new Vector3(gridCellSize.x, gridCellSize.y, 1);
+            }
+        }
+
+
+        private void OnTriggerExit2D(Collider2D collision)
+        {
+            if (collision.gameObject.layer == LayerId.Characters)
+            {
+                CharacterControl charControl = collision.gameObject.GetComponentInParent<CharacterControl>();
+                charControl.ChangeHealth(new CharacterControl.HealthChange(-charControl.health));
+            }
+        }
+
+
+        public Vector2 WorldToLocalPosition(Vector2 worldPosition) => transform.InverseTransformPoint(worldPosition);
+        
+        public Vector2Int LocalToGridPosition(Vector2 localPosition) => new Vector2Int(
+                Mathf.FloorToInt(localPosition.x / gridCellSize.x),
+                Mathf.FloorToInt(localPosition.y / gridCellSize.y)
+        );
+
+        public Vector2Int WorldToGridPosition(Vector2 worldPosition) => LocalToGridPosition(WorldToLocalPosition(worldPosition));
+
+        public Vector2 GridToLocalPosition(Vector2Int gridPosition) => new Vector2(
+                gridPosition.x * gridCellSize.x,
+                gridPosition.y * gridCellSize.y
+        );
+
+        public Vector2 LocalToWorldPosition(Vector2 localPosition) => transform.TransformPoint(localPosition);
+
+        public Vector2 GridToWorldPosition(Vector2Int gridPosition) => LocalToWorldPosition(GridToLocalPosition(gridPosition));
+
+        public Vector2 GridToLocalSize(Vector2Int gridSize) => new Vector2(
+                gridSize.x * gridCellSize.x,
+                gridSize.y * gridCellSize.y
+        );
+
+        public Rect GridToLocalRect(RectInt gridRect)
+        {
+            return new Rect(GridToLocalPosition(gridRect.position), GridToLocalSize(gridRect.size));
         }
 
         public bool IsPlaceable(IEnumerable<RectInt> gridRects)
@@ -115,7 +157,7 @@ namespace APlusOrFail.ObjectGrid
             }
         }
 
-        public void Add(IEnumerable<RectInt> gridRects, GameObject obj)
+        public void AddToGrid(IEnumerable<RectInt> gridRects, GameObject obj)
         {
             RectInt? tempRect;
             if ((tempRect = gridRects.Where(r => !IsWithinRange(r)).Select(r => (RectInt?)r).FirstOrDefault()) != null)
@@ -143,7 +185,7 @@ namespace APlusOrFail.ObjectGrid
             objectToGridMap.Add(obj, gridObject);
         }
 
-        public void Remove(GameObject obj)
+        public void RemoveFromGrid(GameObject obj)
         {
             GridObject gridObject;
             if (objectToGridMap.TryGetValue(obj, out gridObject))
@@ -162,7 +204,7 @@ namespace APlusOrFail.ObjectGrid
             }
         }
 
-        public void Remove(IEnumerable<RectInt> gridRects)
+        public void RemoveFromGrid(IEnumerable<RectInt> gridRects)
         {
             foreach (RectInt gridRect in gridRects)
             {

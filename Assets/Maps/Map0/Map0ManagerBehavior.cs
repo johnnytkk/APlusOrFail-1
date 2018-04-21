@@ -11,7 +11,7 @@ namespace APlusOrFail.Maps.Map0
         public ObjectGridPlacer spawnArea;
         public GameObject test_characterSprite;
 
-        protected override void Start()
+        protected override void Awake()
         {
             if (Player.players.Count == 0)
             {
@@ -42,7 +42,7 @@ namespace APlusOrFail.Maps.Map0
                 player2.MapActionToKey(Player.Action.Action2, KeyCode.RightControl);
             }
 
-            base.Start();
+            base.Awake();
         }
 
         protected override IEnumerable<IRoundSetting> GetRoundSettings()

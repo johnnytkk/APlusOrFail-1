@@ -97,13 +97,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a46a08a4faede3c4e992cc6135cac3ff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  areaPaddingTop: 5
-  areaPaddingBottom: 5
-  areaPaddingLeft: 5
-  areaPaddingRight: 5
-  minAreaWidth: 14
-  minAreaHeight: 14
-  lerpScale: 1
+  _defaultInnerArea:
+    serializedVersion: 2
+    x: -5
+    y: -5
+    width: 10
+    height: 10
+  _minInnerSize: {x: 10, y: 10}
+  _padding:
+    m_Left: 5
+    m_Right: 5
+    m_Top: 5
+    m_Bottom: 5
+  _lerpScale: 1
 --- !u!124 &124924919759847788
 Behaviour:
   m_ObjectHideFlags: 1

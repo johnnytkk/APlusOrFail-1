@@ -5,11 +5,14 @@ using UnityEngine;
 namespace APlusOrFail
 {
     using Objects;
+    using Components.AutoResizeCamera;
 
     public interface IMapSetting
     {
         string name { get; }
         IReadOnlyList<IRoundSetting> roundSettings { get; }
+        MapArea mapArea { get; }
+        AutoResizeCamera camera { get; }
     }
 
     public interface IRoundSetting

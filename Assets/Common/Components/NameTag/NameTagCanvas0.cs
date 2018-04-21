@@ -5,7 +5,7 @@ using UnityEngine.UI;
 namespace APlusOrFail.NameTagCanvas
 {
     [RequireComponent(typeof(RectTransform))]
-    public class NameTagCanvas : MonoBehaviour
+    public class NameTagCanvas0 : MonoBehaviour
     {
         public class NameTagInfo
         {
@@ -37,13 +37,13 @@ namespace APlusOrFail.NameTagCanvas
                 }
             }
 
-            private readonly NameTagCanvas nameTagCanvas;
+            private readonly NameTagCanvas0 nameTagCanvas;
             private readonly RectTransform nameTagRectTrasform;
             private readonly Text nameTagText;
 
             private bool enable;
 
-            public NameTagInfo(NameTagCanvas nameTagCanvas, Transform targetTransform)
+            public NameTagInfo(NameTagCanvas0 nameTagCanvas, Transform targetTransform)
             {
                 this.targetTransform = targetTransform;
                 this.nameTagCanvas = nameTagCanvas;
@@ -72,7 +72,7 @@ namespace APlusOrFail.NameTagCanvas
             }
         }
 
-        public static NameTagCanvas instance { get; private set; }
+        public static NameTagCanvas0 instance { get; private set; }
 
         public RectTransform nameTagPrefab;
 

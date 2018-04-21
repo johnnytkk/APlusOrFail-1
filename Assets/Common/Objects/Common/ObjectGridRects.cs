@@ -23,8 +23,8 @@ namespace APlusOrFail.Objects
 
         public static RectInt Rotate(this RectInt rect, Rotation rotation)
         {
-            Vector2Int p1 = Rotate(rect.min, rotation);
-            Vector2Int p2 = Rotate(rect.max, rotation);
+            Vector2Int p1 = rect.min.Rotate(rotation);
+            Vector2Int p2 = rect.max.Rotate(rotation);
             Vector2Int min = new Vector2Int(Math.Min(p1.x, p2.x), Math.Min(p1.y, p2.y));
             Vector2Int max = new Vector2Int(Math.Max(p1.x, p2.x), Math.Max(p1.y, p2.y));
             Vector2Int size = new Vector2Int(Math.Abs(min.x - max.x), Math.Abs(min.y - max.y));
@@ -60,7 +60,19 @@ namespace APlusOrFail.Objects
         }
 
 
-        private static Vector2Int Rotate(Vector2Int vector, Rotation rotation)
+        public static Vector2Int Rotate(this Vector2Int vector, Rotation rotation)
+        {
+            switch ((byte)rotation % 4)
+            {
+                case 0: return vector;
+                case 1: return vector.Rotate90DegCCW();
+                case 2: return vector * -1;
+                case 3: return vector.Rotate90DegCW();
+                default: throw new InvalidOperationException();
+            }
+        }
+
+        public static Vector2 Rotate(this Vector2 vector, Rotation rotation)
         {
             switch ((byte)rotation % 4)
             {

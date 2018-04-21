@@ -29,7 +29,7 @@ namespace APlusOrFail
 
         private void Awake()
         {
-            if (instance == null)
+            if (ReferenceEquals(instance, null))
             {
                 instance = this;
             }
@@ -42,19 +42,7 @@ namespace APlusOrFail
 
         private void OnDestroy()
         {
-            while (sceneStateStack.Count > 0)
-            {
-                ISceneState sceneState = sceneStateStack.Pop();
-                if (sceneState.phase.IsAtLeast(SceneStatePhase.Focused))
-                {
-                    sceneState.MakeInvisible();
-                }
-                if (sceneState.phase.IsAtLeast(SceneStatePhase.Loaded))
-                {
-                    sceneState.Unload();
-                }
-            }
-            if (instance == this)
+            if (ReferenceEquals(instance, this))
             {
                 instance = null;
             }

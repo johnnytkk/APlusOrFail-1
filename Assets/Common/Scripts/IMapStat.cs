@@ -28,18 +28,29 @@ namespace APlusOrFail
 
         new int currentRound { get; set; }
     }
+    
 
+    public enum RoundState
+    {
+        None,
+        SelectingObjects,
+        PlacingObjects,
+        Playing,
+        Ranking
+    }
 
     public interface IReadonlyRoundStat : IRoundSetting
     {
         IReadOnlyMapStat mapStat { get; }
 
         int order { get; }
+        RoundState state { get; }
     }
 
     public interface IRoundStat : IReadonlyRoundStat
     {
         new IMapStat mapStat { get; }
+        new RoundState state { get; set; }
     }
 
 
