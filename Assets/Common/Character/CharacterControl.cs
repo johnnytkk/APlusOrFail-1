@@ -38,7 +38,8 @@ namespace APlusOrFail.Character
                 this.scoreDelta = scoreDelta;
             }
         }
-
+		
+		public AudioSource walkingSound;
 
         public float maxSpeed = 1.5f;
         public float squatMaxSpeed = 2f;
@@ -128,6 +129,9 @@ namespace APlusOrFail.Character
 
             spriteAnimator = charSprite.attachedSprite?.GetComponent<Animator>();
             charSprite.onAttachedSpriteChanged += OnAttachedSpriteChanged;
+			
+			walkingSound = GetComponent<AudioSource>();
+			walkingSound.Stop();
 
             UpdateEnded();
         }
@@ -300,6 +304,19 @@ namespace APlusOrFail.Character
             this.targetWheelVelocity = targetWheelVelocity;
             currentWheelSpeed = Mathf.Abs(wheelJoint.jointSpeed) * Mathf.Deg2Rad * wheelCollider.radius;
             gravitionalVelocity = Vector2.Dot(rigidbody2D.velocity, -Physics2D.gravity.normalized);
+			
+			if (currentWheelSpeed > 0 && !inAir)
+			{
+				if (!walkingSound.isPlaying)
+				{
+					walkingSound.Play();
+				}
+			}
+			else 
+			{
+				walkingSound.Stop();
+			}
+			
         }
 
         private bool HasKeyPressed(Player.Action action)
